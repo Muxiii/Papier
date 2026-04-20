@@ -1,0 +1,53 @@
+@import 'tailwindcss';
+
+@keyframes slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slide-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.28s ease-out;
+}
+
+.animate-slide-in-left {
+  animation: slide-in-left 0.28s ease-out;
+}
+
+.paper-bg {
+  background-color: #faf8f3;
+  background-image:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.35) 0%, transparent 40%),
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 27px,
+      rgba(180, 160, 120, 0.08) 27px,
+      rgba(180, 160, 120, 0.08) 28px
+    ),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='80' height='80' filter='url(%23n)' opacity='.04'/%3E%3C/svg%3E");
+}
+
+body {
+  margin: 0;
+}
+
+#root {
+  min-height: 100svh;
+}

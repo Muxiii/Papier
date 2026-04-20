@@ -1,0 +1,174 @@
+# Sticker Diary — 产品与技术规格（上下文快照）
+
+> 本文档用于在对话上下文不足时快速恢复对项目的理解。**以仓库当前实现为准**；每次功能变更请同步更新本文。
+
+---
+
+## 1. 产品是什么
+
+单页 Web 应用：按**日历日**查看一块**纸质风格画布**，上面放置**文字贴纸**（已完成 / 待办）。用户可通过**底部 AI 对话**从自然语言生成贴纸备选并贴到画布；贴纸可**拖拽**、**查看详情**、**编辑（限今天及未来）**、**切换状态**、**删除**。
+
+- 无账号、无多设备同步（v1）。
+- 数据默认存浏览器 **localStorage**（含贴纸与 AI 对话历史）。
+
+---
+
+## 2. 已实现功能清单
+
+### 2.1 顶部日期导航
+
+- 左箭头：前一天；右箭头：后一天；中间显示「M月d日 星期几」（中文）。
+- 右侧日历图标：打开迷你日历；点击外部关闭。
+- 画布区域**水平滑动**：左滑 → 下一天，右滑 → 上一天（与竖向滚动区分）。
+- 换日时有简单**滑入动画**；某日无贴纸时显示空状态文案。
+- 可切换到**未来日期**（用于提前记待办）。
+
+### 2.2 迷你日历
+
+- 顶栏下方浮层（高度约 260px 内）。
+- 月份切换（‹ ›）只切换**展示月**。
+- 有贴纸的日期：**小圆点**区分待办（琥珀）/ 已完成（绿）；当前查看日高亮；**今天**下划线。
+- 打开日历时用 `viewingDate` 作 `key` 挂载。
+
+### 2.3 画布与贴纸
+
+- 可纵向滚动；纸质背景（横线 + 轻纹理）。
+- **列表订阅（重要）**：`App` 使用 `useDiaryStore((s) => s.stickers)` 订阅贴纸数组，再用 **`useMemo`** 按 `viewingDate` 过滤、计算 `dayMarks`。**不要**写成 `const fn = useDiaryStore((s) => s.getStickersForDate); const list = fn(date)`——那样只订阅到**函数引用**，`stickers` 更新后组件不会重绘，拖拽后界面会像「卡住」直到刷新。
+- **持久化 hydration**：在 Zustand `persist` 完成**再渲染可交互画布**，避免异步 rehydration 用旧数据覆盖刚拖动的位置（贴纸「弹回原位」问题）。
+- 贴纸 **Pointer** 拖拽：`pointerdown` 后在 **window** 上监听 `move/up`；起点坐标用 **ref** 同步，避免闭包读到旧位置；松手后把 `origin + 位移` 写回 store。
+- 贴纸 **done**：实色卡片；**todo**：半透明 + 虚线边框。
+- 点击贴纸（短按、位移小于阈值）：打开详情弹窗。
+
+### 2.4 贴纸详情弹窗
+
+- 由父级 **`key={modalId}`** 挂载，切换贴纸时表单初值重置。
+- **今天及未来**（`sticker.date >= 今天`，按 `yyyy-MM-dd` 字符串比较）：可编辑**标题**、**简介**，「保存修改」后写入 store 并关闭弹窗。
+- **昨天及以前**：标题与简介**只读**，提示「昨日及以前的贴纸不可编辑标题与简介」。
+- **已完成**：「标记为未完成」。
+- **未完成**：「标记为已完成」、「取消」（关闭）、「删除贴纸」。
+- **删除贴纸**（两种状态均有）：一键移除并关闭弹窗（无二次确认）。
+
+### 2.5 AI 对话
+
+- 底部入口条；点击展开底部抽屉。
+- 用户 / AI 气泡左右分布。
+- **对话历史**存 **Zustand `chatMessages`**，与贴纸一并 **persist**；再次打开抽屉时列表保留，并用 **`useLayoutEffect`** 在打开或消息变化时**滚到底部**。
+- 请求走 `POST /api/chat`（Vite 开发时代理到本机 Express），**API Key 仅在服务端**，`.env` + `dotenv`。
+- **请求体**：`{ messages, context: { anchorDate, clientToday } }`（均为 `yyyy-MM-dd`）。`anchorDate` = App 当前**查看日** `viewingDate`；`clientToday` = 设备本地 `todayISO()`，供 System 消歧。
+- **LLM_PROVIDER**：`anthropic` | `openai` | `moonshot`（Moonshot：`baseURL` 默认 `https://api.moonshot.ai/v1`）。
+- AI 返回 JSON：`reply` + `candidates[]`，每条候选含 **`title`、`status`、`sticker_date`**（贴纸应落在哪一天）。服务端 System 要求：默认「明天」「昨天」等**相对日期相对 anchorDate** 推算；「今天」「这天」→ `anchorDate`；缺省或非法 `sticker_date` 时服务端回退为 `anchorDate`。
+- 前端 `addSticker` 使用 `normalizeStickerDateInput(c.sticker_date, viewingDate)` 再次校验；若贴纸落在**非当前查看日**，Toast 追加提示可切日期查看。
+- 候选卡片上可展示目标日期（与 `formatStickerDate` 一致）。
+- System prompt 另要求标题**具体**（地名、店名等），避免泛化。
+- 用户点选候选贴纸：**禁止**在 `setState` 的 updater 里调用 `addSticker`（避免 React Strict Mode **重复执行**导致双贴纸）；应先 **`addSticker` 一次**，再 **`setChatMessages`** 更新气泡。
+- 点选后插入**动态追问文案**：根据事项关键词定制追问示例（如电影→「电影怎么样？」、公园→「那里美吗？」、美食→「味道怎么样？」）；若无法识别则回退通用追问。下一则用户输入可写入对应贴纸 `description`。
+- 点选后顶部 **Toast**：默认「「标题」已放到画布」；若 `sticker_date` ≠ 当前查看日，追加「（M月d日，可切日期查看）」。
+
+### 2.6 数据与持久化
+
+- Zustand + `persist`，键名：`sticker-diary-v1`。
+- 持久化字段：`viewingDate`、`stickers`、`chatMessages`。
+- 合并策略：默认 `merge` 为 `{ ...current, ...persisted }`；旧存档无 `chatMessages` 时由当前初始状态补齐。
+
+---
+
+## 3. 技术栈
+
+| 类别 | 选型 |
+|------|------|
+| 构建 / 前端 | Vite 8、React 19、TypeScript |
+| 样式 | Tailwind CSS v4（`@tailwindcss/vite`） |
+| 状态 | Zustand + persist（localStorage） |
+| 日期 | date-fns（`zhCN`） |
+| 后端 | Express 5、`tsx` 运行 `server/index.ts` |
+| LLM | `@anthropic-ai/sdk`、`openai`（含 Moonshot 兼容） |
+| 环境变量 | `dotenv` |
+
+路径别名：`@/*` → `src/*`。
+
+---
+
+## 4. 仓库文件结构（要点）
+
+```
+sticker_diary/
+├── SPEC.md
+├── README.md
+├── .env.example
+├── index.html
+├── package.json
+├── vite.config.ts
+├── tsconfig*.json
+├── server/
+│   └── index.ts              # POST /api/chat（读 context，返回带 sticker_date 的 candidates）
+└── src/
+    ├── main.tsx
+    ├── index.css
+    ├── App.tsx                 # hydration 门闸、路由级 modal key
+    ├── types/
+    │   ├── sticker.ts
+    │   └── chat.ts             # ChatMessage、ChatCandidate
+    ├── store/
+    │   └── useDiaryStore.ts    # stickers、chatMessages、持久化
+    ├── lib/
+    │   ├── date.ts             # todayISO、normalizeStickerDateInput、isStickerContentEditable 等
+    │   └── api.ts              # postChat(messages, context)
+    └── components/
+        ├── DateHeader.tsx
+        ├── MiniCalendar.tsx
+        ├── StickerCanvas.tsx
+        ├── StickerCard.tsx
+        ├── StickerModal.tsx
+        └── AIChatDrawer.tsx
+```
+
+---
+
+## 5. 脚本与环境变量
+
+- `npm run dev`：API（默认 **8787**）+ Vite（默认 **5173**）。
+- `npm run build` / `npm run lint`。
+
+环境变量见 `.env.example`（`LLM_PROVIDER`、`ANTHROPIC_*`、`OPENAI_*`、`MOONSHOT_*`、`PORT`）。
+
+---
+
+## 6. 核心类型
+
+```ts
+// types/sticker.ts
+type Sticker = {
+  id: string
+  title: string
+  date: string            // yyyy-MM-dd
+  description: string
+  status: 'done' | 'todo'
+  position: { x: number; y: number }
+  type: 'text'
+}
+
+// types/chat.ts
+type ChatCandidate = { title: string; status: 'done' | 'todo'; sticker_date?: string }
+type ChatMessage =
+  | { id: string; role: 'user'; content: string }
+  | { id: string; role: 'assistant'; content: string; candidates?: ChatCandidate[] }
+```
+
+---
+
+## 7. 刻意未实现（v2+）
+
+- 账号登录、云端同步（如 Supabase）。
+- 贴纸素材库、手绘、图片/语音输入、导出分享等。
+
+---
+
+## 8. 变更记录
+
+| 日期 | 说明 |
+|------|------|
+| — | 初版 v1：画布、贴纸、AI、日历、localStorage。 |
+| — | 拖拽 window 级 pointer；Moonshot；dotenv；System prompt；Toast；删除贴纸。 |
+| — | 可编辑标题/简介（今日及未来）；hydration 门闸修复拖拽回弹；AI 对话持久化 + 滚底；修复候选贴纸重复添加；`types/chat.ts`；SPEC 同步。 |
+| — | **订阅修复**：`App` 用 `stickers` 数组 + `useMemo` 解决拖拽后不刷新；**AI 日期**：`postChat` 传 `anchorDate`/`clientToday`，候选含 `sticker_date`；`lib/date.normalizeStickerDateInput`。 |
+| — | **动态追问**：贴纸落画布后，AI 追问由固定句改为按事项类型定制（电影/公园/美食/演出/学习等），无法识别时回退通用模板。 |
