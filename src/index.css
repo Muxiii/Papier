@@ -45,6 +45,16 @@
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='80' height='80' filter='url(%23n)' opacity='.04'/%3E%3C/svg%3E");
 }
 
+.paper-dots {
+  background-color: #ece8df;
+  background-image:
+    radial-gradient(circle at 1px 1px, rgba(122, 108, 84, 0.14) 1px, transparent 0),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.5), rgba(236, 232, 223, 0.7));
+  background-size:
+    14px 14px,
+    100% 100%;
+}
+
 body {
   margin: 0;
   font-family: 'Noto Serif SC', 'Source Han Serif SC', 'Songti SC', 'STSong',

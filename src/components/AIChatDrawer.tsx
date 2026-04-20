@@ -182,10 +182,10 @@ export function AIChatDrawer() {
   )
 
   return (
-    <>
+    <div className="relative">
       {toast && (
         <div
-          className="fixed top-4 left-1/2 z-[60] max-w-[min(90vw,360px)] -translate-x-1/2 rounded-xl bg-stone-900 px-4 py-2.5 text-center text-sm text-white shadow-lg"
+          className="absolute bottom-[calc(100%+8px)] left-1/2 z-[60] max-w-[min(90vw,360px)] -translate-x-1/2 rounded-xl bg-stone-900 px-4 py-2.5 text-center text-sm text-white shadow-lg"
           role="status"
         >
           {toast}
@@ -195,7 +195,7 @@ export function AIChatDrawer() {
       {!open && (
         <button
           type="button"
-          className="fixed bottom-0 left-0 right-0 z-30 border-t border-amber-900/10 bg-[#fdfbf7]/95 px-4 py-3 text-left text-sm text-stone-500 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] backdrop-blur-md"
+          className="w-full rounded-t-xl border border-amber-900/15 bg-[#fdfbf7]/95 px-4 py-3 text-left text-sm text-stone-500 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] backdrop-blur-md transition hover:bg-[#fffdf8]"
           onClick={() => setOpen(true)}
         >
           和 AI 聊聊今天的事…
@@ -203,15 +203,7 @@ export function AIChatDrawer() {
       )}
 
       {open && (
-        <div
-          className="fixed inset-0 z-40 flex flex-col bg-black/40"
-          role="presentation"
-          onClick={() => setOpen(false)}
-        >
-          <div
-            className="mt-auto flex max-h-[85vh] flex-col rounded-t-2xl bg-[#fdfbf7] shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
+        <div className="z-40 mt-2 flex max-h-[72vh] flex-col rounded-2xl border border-amber-900/15 bg-[#fdfbf7] shadow-2xl">
             <div className="flex items-center justify-between border-b border-amber-900/10 px-4 py-3">
               <h2 className="text-sm font-semibold text-stone-900" id={id}>
                 和 AI 聊聊
@@ -317,9 +309,8 @@ export function AIChatDrawer() {
                 </button>
               </div>
             </form>
-          </div>
         </div>
       )}
-    </>
+    </div>
   )
 }
