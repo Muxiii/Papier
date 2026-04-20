@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { StickerCard } from '@/components/StickerCard'
 import { formatStickerDate } from '@/lib/date'
@@ -40,6 +40,29 @@ function DiaryPage({
   onStickerOpen,
   onStickerPatch,
 }: PageProps) {
+  const contentRef = useRef<HTMLDivElement>(null)
+  const [bounds, setBounds] = useState<{ width: number; height: number }>({
+    width: 0,
+    height: 0,
+  })
+
+  useEffect(() => {
+    const el = contentRef.current
+    if (!el) return
+
+    const update = () => {
+      setBounds({
+        width: el.clientWidth,
+        height: el.clientHeight,
+      })
+    }
+
+    update()
+    const observer = new ResizeObserver(update)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
   return (
     <div
       className="relative h-[600px] flex-1 border border-stone-300/70 bg-[#fdfcf8]"
@@ -55,7 +78,7 @@ function DiaryPage({
       >
         {formatStickerDate(date)}
       </div>
-      <div className="relative h-[540px]">
+      <div ref={contentRef} className="relative h-[540px]">
         {stickers.length === 0 && (
           <p className="px-4 py-4 text-[12px] text-stone-400">这天还没有贴纸记录</p>
         )}
@@ -64,6 +87,7 @@ function DiaryPage({
             key={s.id}
             sticker={s}
             selected={selectedStickerId === s.id}
+            bounds={bounds}
             onSelect={(id) => onSelectSticker(id)}
             onMoveEnd={onStickerMoveEnd}
             onOpen={onStickerOpen}

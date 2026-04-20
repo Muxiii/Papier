@@ -23,6 +23,7 @@ type Corner = 'nw' | 'ne' | 'sw' | 'se'
 type Props = {
   sticker: Sticker
   selected: boolean
+  bounds?: { width: number; height: number }
   onSelect: (id: string) => void
   onMoveEnd: (id: string, position: { x: number; y: number }) => void
   onOpen: (id: string) => void
@@ -81,6 +82,7 @@ function computeResize(
 export function StickerCard({
   sticker,
   selected,
+  bounds,
   onSelect,
   onMoveEnd,
   onOpen,
@@ -151,12 +153,28 @@ export function StickerCard({
     const pointerId = e.pointerId
     const originX = positionRef.current.x
     const originY = positionRef.current.y
+    const { w: startW, h: startH } = sizeRef.current
+
+    const clamp = (v: number, min: number, max: number) =>
+      Math.max(min, Math.min(max, v))
+    const clampPosition = (x: number, y: number) => {
+      if (!bounds) return { x, y }
+      const maxX = Math.max(0, bounds.width - startW)
+      const maxY = Math.max(0, bounds.height - startH)
+      return {
+        x: clamp(x, 0, maxX),
+        y: clamp(y, 0, maxY),
+      }
+    }
 
     const onMove = (ev: PointerEvent) => {
       if (ev.pointerId !== pointerId) return
+      const nextX = originX + (ev.clientX - startClientX)
+      const nextY = originY + (ev.clientY - startClientY)
+      const clamped = clampPosition(nextX, nextY)
       setDrag({
-        x: ev.clientX - startClientX,
-        y: ev.clientY - startClientY,
+        x: clamped.x - originX,
+        y: clamped.y - originY,
       })
     }
 
@@ -174,9 +192,10 @@ export function StickerCard({
 
       const moved = Math.hypot(dx, dy) > MOVE_THRESHOLD
       if (moved) {
+        const clamped = clampPosition(originX + dx, originY + dy)
         onMoveEndRef.current(stickerIdRef.current, {
-          x: originX + dx,
-          y: originY + dy,
+          x: clamped.x,
+          y: clamped.y,
         })
       } else {
         onSelectRef.current(stickerIdRef.current)
@@ -189,7 +208,7 @@ export function StickerCard({
     window.addEventListener('pointermove', onMove)
     window.addEventListener('pointerup', onUp)
     window.addEventListener('pointercancel', onUp)
-  }, [])
+  }, [bounds])
 
   const onDoubleClickContent = useCallback((e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest('[data-sticker-handle]')) return

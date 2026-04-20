@@ -37,10 +37,30 @@ export function LeftSidebar({ viewingDate, stickers, onSelectDate }: Props) {
   const [tab, setTab] = useState<TabKey>('date')
   const today = todayISO()
   const dateListRef = useRef<HTMLDivElement>(null)
+  const recenterTimerRef = useRef<number | null>(null)
 
   const dateItems = useMemo(() => {
     return Array.from({ length: 241 }, (_, i) => shiftDateISO(today, i - 120))
   }, [today])
+
+  const dateRows = useMemo(() => {
+    const rows: Array<
+      | { type: 'month'; key: string; label: string }
+      | { type: 'date'; key: string; date: string }
+    > = []
+    let prevMonth = ''
+
+    for (const d of dateItems) {
+      const monthLabel = format(parseISO(`${d}T12:00:00`), 'MMM').toUpperCase()
+      if (monthLabel !== prevMonth) {
+        rows.push({ type: 'month', key: `month-${d}`, label: monthLabel })
+        prevMonth = monthLabel
+      }
+      rows.push({ type: 'date', key: d, date: d })
+    }
+
+    return rows
+  }, [dateItems])
 
   useEffect(() => {
     if (tab !== 'date') return
@@ -50,6 +70,14 @@ export function LeftSidebar({ viewingDate, stickers, onSelectDate }: Props) {
     if (!el) return
     el.scrollIntoView({ block: 'center', behavior: 'smooth' })
   }, [tab, viewingDate])
+
+  useEffect(() => {
+    return () => {
+      if (recenterTimerRef.current !== null) {
+        window.clearTimeout(recenterTimerRef.current)
+      }
+    }
+  }, [])
 
   const todos = useMemo(() => {
     const futureEnd = shiftDateISO(today, 2)
@@ -71,18 +99,18 @@ export function LeftSidebar({ viewingDate, stickers, onSelectDate }: Props) {
 
   return (
     <aside className="flex h-svh w-[280px] shrink-0 flex-col border-r border-stone-300/70 bg-[#ece8e2]/95 p-4">
-      <div className="flex items-center gap-2 border-b border-stone-300/70 pb-4">
+      <div className="flex items-center gap-3 border-b border-stone-300/70 pb-4">
         <img
-          src="/favicon.svg"
+          src="/papier-icon.png"
           alt="Papier logo"
-          className="h-5 w-5 rounded-[4px] border border-stone-300/60 bg-[#f4efe5]"
+          className="h-10 w-10 rounded-[8px] border border-stone-300/60 bg-[#f4efe5] object-cover"
         />
         <div>
           <p className="text-[15px] font-semibold text-stone-800">Papier</p>
         </div>
       </div>
 
-      <div className="mt-4 flex rounded-md bg-stone-200/70 p-0.5 text-[12px]">
+      <div className="mt-4 flex rounded-md bg-[#E2DDD4] p-0.5 text-[12px]">
         <button
           type="button"
           className={`flex-1 rounded px-2 py-1 transition ${tab === 'date' ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-600'}`}
@@ -106,21 +134,42 @@ export function LeftSidebar({ viewingDate, stickers, onSelectDate }: Props) {
             <div
               ref={dateListRef}
               className="max-h-[340px] space-y-1 overflow-y-auto pr-1 scroll-smooth"
-              onWheel={(e) => {
-                if (Math.abs(e.deltaY) < 16) return
-                onSelectDate(shiftDateISO(viewingDate, e.deltaY > 0 ? 1 : -1))
+              onScroll={() => {
+                if (recenterTimerRef.current !== null) {
+                  window.clearTimeout(recenterTimerRef.current)
+                }
+                recenterTimerRef.current = window.setTimeout(() => {
+                  const currentEl = dateListRef.current?.querySelector<HTMLElement>(
+                    `[data-date="${viewingDate}"]`,
+                  )
+                  currentEl?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+                }, 5000)
               }}
             >
-              {dateItems.map((d) => {
+              {dateRows.map((row) => {
+                if (row.type === 'month') {
+                  return (
+                    <div
+                      key={row.key}
+                      className="flex h-[34px] items-center px-2 text-[11px] font-medium uppercase tracking-[0.08em] text-stone-500"
+                    >
+                      {row.label}
+                    </div>
+                  )
+                }
+
+                const d = row.date
                 const selected = d === viewingDate
                 const future = d > today
                 return (
                   <button
-                    key={d}
+                    key={row.key}
                     data-date={d}
                     type="button"
                     className={`block w-full rounded px-2 py-1.5 text-left text-[13px] transition ${
-                      selected ? 'bg-stone-300/90 font-semibold text-stone-900' : 'text-stone-700 hover:bg-stone-200/70'
+                      selected
+                        ? 'bg-[#E7E2DA] font-semibold text-stone-900'
+                        : 'text-stone-700 hover:bg-stone-200/70'
                     } ${future ? 'opacity-30' : ''}`}
                     onClick={() => onSelectDate(d)}
                   >
