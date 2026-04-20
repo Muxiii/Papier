@@ -70,7 +70,7 @@ export function LeftSidebar({ viewingDate, stickers, onSelectDate }: Props) {
   }, [stickers, today])
 
   return (
-    <aside className="flex min-h-svh w-[280px] shrink-0 flex-col border-r border-stone-300/70 bg-[#ece8e2]/95 p-4">
+    <aside className="flex h-svh w-[280px] shrink-0 flex-col border-r border-stone-300/70 bg-[#ece8e2]/95 p-4">
       <div className="flex items-center gap-2 border-b border-stone-300/70 pb-4">
         <img
           src="/favicon.svg"

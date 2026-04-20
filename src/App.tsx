@@ -85,14 +85,14 @@ export default function App() {
   )
 
   return (
-    <div className="flex min-h-svh bg-[#e5e2dc]">
+    <div className="flex h-svh overflow-hidden bg-[#e5e2dc]">
       <LeftSidebar
         viewingDate={viewingDate}
         stickers={allStickers}
         onSelectDate={changeDate}
       />
 
-      <main className="relative min-w-0 flex-1">
+      <main className="relative min-w-0 flex-1 overflow-hidden">
         {persistHydrated ? (
           <DiarySpread
             activeDate={viewingDate}
@@ -114,7 +114,7 @@ export default function App() {
             加载中…
           </div>
         )}
-        <div className="pointer-events-none absolute inset-x-6 bottom-4 z-30">
+        <div className="pointer-events-none absolute inset-x-6 bottom-2 z-30">
           <div className="pointer-events-auto mx-auto max-w-[1180px]">
             <AIChatDrawer />
           </div>

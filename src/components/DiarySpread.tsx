@@ -42,7 +42,7 @@ function DiaryPage({
 }: PageProps) {
   return (
     <div
-      className="relative min-h-[560px] flex-1 border border-stone-300/70 bg-[#fdfcf8]"
+      className="relative h-[600px] flex-1 border border-stone-300/70 bg-[#fdfcf8]"
       onPointerDown={(e) => {
         if (!(e.target as HTMLElement).closest('[data-sticker]')) onSelectSticker(null)
       }}
@@ -55,7 +55,7 @@ function DiaryPage({
       >
         {formatStickerDate(date)}
       </div>
-      <div className="relative min-h-[500px]">
+      <div className="relative h-[540px]">
         {stickers.length === 0 && (
           <p className="px-4 py-4 text-[12px] text-stone-400">这天还没有贴纸记录</p>
         )}
@@ -98,7 +98,7 @@ export function DiarySpread({
   )
 
   return (
-    <div className="paper-dots h-full min-h-svh flex-1 overflow-auto p-6 pb-32">
+    <div className="paper-dots h-full flex-1 overflow-hidden p-6 pb-20">
       <div className="mx-auto max-w-[1180px]">
         <div className="relative flex gap-0">
           <DiaryPage
