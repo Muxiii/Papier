@@ -20,8 +20,8 @@ export const STICKER_LAYOUT = {
   ROTATE_CORNER_EXTENT_PX: 28,
   /** 选中时「边框」双击重置热区厚度（px） */
   BORDER_HIT_PX: 14,
-  FONT_MIN: 10,
-  FONT_MAX: 28,
+  FONT_MIN: 8,
+  FONT_MAX: 20,
 } as const
 
 let measureCanvas: HTMLCanvasElement | null = null
@@ -85,7 +85,8 @@ function textFitsBox(
   const lineHeight = Math.round(fontSize * 1.35)
   const { height: titleH } = wrappedTitleMetrics(ctx, title, innerW, lineHeight)
   const subSize = Math.max(8, Math.round(fontSize * 0.64))
-  const todoBlock = done ? 0 : Math.round(subSize * 1.25) + 4
+  const subLineHeight = Math.round(subSize * 1.35)
+  const todoBlock = done ? 0 : subLineHeight + 2
   return titleH + todoBlock <= innerH
 }
 
@@ -102,15 +103,29 @@ export function stickerRotation(s: Sticker): number {
 }
 
 /**
- * 仅内边距随宽度成比例（与最小宽高规则一致）。
- * - padX ≈ 5.5% * w（夹在 6~22）
- * - padY ≈ 4% * w（夹在 4~16）
+ * 内边距由 min(width, height) 决定，并在上一版基础上再放大 1 倍。
+ * - padX ≈ 24% * minSide（夹在 26~96）
+ * - padY ≈ 17.6% * minSide（夹在 16~70）
  */
-export function layoutPaddingForWidth(width: number) {
-  const w = Math.max(STICKER_LAYOUT.MIN_W, width)
-  const padX = Math.round(Math.max(6, Math.min(22, w * 0.055)))
-  const padY = Math.round(Math.max(4, Math.min(16, w * 0.04)))
+export function layoutPaddingForBox(width: number, height: number) {
+  const side = Math.max(STICKER_LAYOUT.MIN_H, Math.min(width, height))
+  const padX = Math.round(Math.max(26, Math.min(96, side * 0.24)))
+  const padY = Math.round(Math.max(16, Math.min(70, side * 0.176)))
   return { padX, padY }
+}
+
+export function todoRequiredInnerHeight(fontSize: number) {
+  const titleLine = Math.round(fontSize * 1.35)
+  const subSize = Math.max(6, Math.round(fontSize * 0.64))
+  const subLine = Math.round(subSize * 1.35)
+  return titleLine + subLine + 2
+}
+
+/** 待办贴纸在给定宽高下，为保证“待办”不截断所需最小高度 */
+export function minTodoStickerHeight(width: number, height: number) {
+  const { padY } = layoutPaddingForBox(width, height)
+  const minInner = todoRequiredInnerHeight(STICKER_LAYOUT.FONT_MIN)
+  return Math.max(STICKER_LAYOUT.MIN_H, minInner + padY * 2)
 }
 
 /**
@@ -123,7 +138,7 @@ export function layoutTypeForBox(
   title: string,
   done: boolean,
 ): { padX: number; padY: number; fontSize: number; subSize: number; lineHeight: number } {
-  const { padX, padY } = layoutPaddingForWidth(width)
+  const { padX, padY } = layoutPaddingForBox(width, height)
   const innerW = Math.max(0, width - 2 * padX)
   const innerH = Math.max(0, height - 2 * padY)
 
@@ -141,7 +156,7 @@ export function layoutTypeForBox(
   }
 
   const fontSize = best
-  const subSize = Math.max(8, Math.round(fontSize * 0.64))
+  const subSize = Math.max(6, Math.round(fontSize * 0.64))
   const lineHeight = Math.round(fontSize * 1.35)
   return { padX, padY, fontSize, subSize, lineHeight }
 }

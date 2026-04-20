@@ -41,7 +41,8 @@
 - **尺寸与旋转**：贴纸数据含 `size?: { w, h }`（px）、`rotation?: number`（顺时针度）；新建默认 **220×72**。旧存档无 `size` 时按默认宽高渲染。缩放时位移映射到贴纸**局部坐标**（随旋转角换算），长宽比自由，**最小宽 80px、最小高 40px**（`STICKER_LAYOUT`）。
 - **缩放点与旋转（类 Figma）**：四角 **18×18px** 缩放点（可见圆点约 8px），指针为斜向缩放；角外侧 **约 28px** 延伸的感应区主要在贴纸外，指针为 **grab**，拖曳为**旋转**；缩放点叠在感应区之上（z-index 更高）时优先缩放。无单独「旋转按钮」。
 - **边框双击重置**：选中时，沿卡片四边有 **14px** 宽的透明「边框」热区；**双击边框**将贴纸恢复为默认 **220×72** 与 **rotation: 0**；不修改未来将引入的「字体 / 样式」等字段（当前类型中亦无此类字段）。
-- **文字与内边距**：标题 `word-break` / `overflow-wrap` 可换行；**水平 padding ≈ 5.5%×宽**（夹 6~22px）、**垂直 padding ≈ 4%×宽**（夹 4~16px）。**字号**在 **10~28px** 内取**最大**仍能排进当前内盒（含「待办」行）的值：宽贴纸若横向仍有留白，不会只因变窄而缩小字，直至折行 + padding 所留空间不足以容纳当前字号时才缩小（Canvas `measureText` + 按字素折行，`layoutTypeForBox`）。
+- **文字与内边距**：标题 `word-break` / `overflow-wrap` 可换行；`padding` 由 `min(width,height)` 驱动，并在上一版基础上再放大 1 倍：**水平 ≈ 24%×minSide**（夹 26~96px）、**垂直 ≈ 17.6%×minSide**（夹 16~70px）。**字号**在 **8~20px** 内取**最大**仍能排进当前内盒（含「待办」行）的值：宽贴纸若横向仍有留白，不会只因变窄而缩小字，直至折行 + padding 所留空间不足以容纳当前字号时才缩小（Canvas `measureText` + 按字素折行，`layoutTypeForBox`）。
+- **待办贴纸防截断**：缩放时对 `todo` 贴纸应用额外最小高约束（`minTodoStickerHeight`），保证「待办」与标题一样在同一内容容器内遵守一致 padding，不会被底边裁切。
 
 ### 2.4 贴纸详情弹窗
 
@@ -81,7 +82,7 @@
 | 类别 | 选型 |
 |------|------|
 | 构建 / 前端 | Vite 8、React 19、TypeScript |
-| 样式 | Tailwind CSS v4（`@tailwindcss/vite`） |
+| 样式 | Tailwind CSS v4（`@tailwindcss/vite`） + 全局默认字体 `Noto Serif SC`（Google Fonts） |
 | 状态 | Zustand + persist（localStorage） |
 | 日期 | date-fns（`zhCN`） |
 | 后端 | Express 5、`tsx` 运行 `server/index.ts` |
@@ -180,3 +181,7 @@ type ChatMessage =
 | — | **订阅修复**：`App` 用 `stickers` 数组 + `useMemo` 解决拖拽后不刷新；**AI 日期**：`postChat` 传 `anchorDate`/`clientToday`，候选含 `sticker_date`；`lib/date.normalizeStickerDateInput`。 |
 | — | **动态追问**：贴纸落画布后，AI 追问由固定句改为按事项类型定制（电影/公园/美食/演出/学习等），无法识别时回退通用模板。 |
 | — | **缩放与旋转**：单击选中 + 四角缩放；角外侧区旋转；双击内容开详情；`layoutTypeForBox` 按盒适配字号；边框双击恢复默认尺寸与角度。 |
+| — | **默认字体**：全局字体切换为 `Noto Serif SC`，并保留 `Source Han Serif SC` / `Songti SC` / `STSong` / `SimSun` / `serif` 回退链。 |
+| — | **内边距与待办缩放**：padding 改为按 `min(width,height)` 计算并整体放大约 80%；`todo` 缩放时增加最小高度保护，避免「待办」被裁切。 |
+| — | **视觉微调**：内边距继续增大（约 12% / 8.8% 的 minSide 比例），并将贴纸字号上限下调到 24、下限下调到 9，使整体更留白、文字更克制。 |
+| — | **二次视觉微调**：padding 在上一版基础上再放大 1 倍（24% / 17.6% 的 minSide 比例，范围同步翻倍），并将贴纸字号范围再下调到 8~20。 |

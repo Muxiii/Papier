@@ -11,6 +11,7 @@ import {
 import {
   STICKER_LAYOUT,
   layoutTypeForBox,
+  minTodoStickerHeight,
   screenDeltaToLocal,
   stickerRotation,
   stickerSize,
@@ -37,8 +38,9 @@ function computeResize(
   startPos: { x: number; y: number },
   startW: number,
   startH: number,
+  minW: number,
+  minH: number,
 ): { x: number; y: number; w: number; h: number } {
-  const { MIN_W, MIN_H } = STICKER_LAYOUT
   let newW = startW
   let newH = startH
   let newL = startPos.x
@@ -62,14 +64,14 @@ function computeResize(
     newL = startPos.x + dxl
   }
 
-  if (newW < MIN_W) {
-    const deficit = MIN_W - newW
-    newW = MIN_W
+  if (newW < minW) {
+    const deficit = minW - newW
+    newW = minW
     if (corner === 'nw' || corner === 'sw') newL -= deficit
   }
-  if (newH < MIN_H) {
-    const deficit = MIN_H - newH
-    newH = MIN_H
+  if (newH < minH) {
+    const deficit = minH - newH
+    newH = minH
     if (corner === 'nw' || corner === 'ne') newT -= deficit
   }
 
@@ -219,13 +221,36 @@ export function StickerCard({
       const startPos = { ...positionRef.current }
       const { w: startW, h: startH } = sizeRef.current
       const startRot = rotRef.current
+      const minW = STICKER_LAYOUT.MIN_W
 
       const onMove = (ev: PointerEvent) => {
         if (ev.pointerId !== pointerId) return
         const dx = ev.clientX - startX
         const dy = ev.clientY - startY
         const { dxl, dyl } = screenDeltaToLocal(dx, dy, startRot)
-        const next = computeResize(corner, dxl, dyl, startPos, startW, startH)
+        const draft = computeResize(
+          corner,
+          dxl,
+          dyl,
+          startPos,
+          startW,
+          startH,
+          minW,
+          STICKER_LAYOUT.MIN_H,
+        )
+        const minH = done
+          ? STICKER_LAYOUT.MIN_H
+          : minTodoStickerHeight(draft.w, draft.h)
+        const next = computeResize(
+          corner,
+          dxl,
+          dyl,
+          startPos,
+          startW,
+          startH,
+          minW,
+          minH,
+        )
         setLiveRect(next)
       }
 
@@ -237,7 +262,29 @@ export function StickerCard({
         const dx = ev.clientX - startX
         const dy = ev.clientY - startY
         const { dxl, dyl } = screenDeltaToLocal(dx, dy, startRot)
-        const next = computeResize(corner, dxl, dyl, startPos, startW, startH)
+        const draft = computeResize(
+          corner,
+          dxl,
+          dyl,
+          startPos,
+          startW,
+          startH,
+          minW,
+          STICKER_LAYOUT.MIN_H,
+        )
+        const minH = done
+          ? STICKER_LAYOUT.MIN_H
+          : minTodoStickerHeight(draft.w, draft.h)
+        const next = computeResize(
+          corner,
+          dxl,
+          dyl,
+          startPos,
+          startW,
+          startH,
+          minW,
+          minH,
+        )
         onPatchRef.current(stickerIdRef.current, {
           position: { x: next.x, y: next.y },
           size: { w: next.w, h: next.h },
@@ -250,7 +297,7 @@ export function StickerCard({
       window.addEventListener('pointerup', onUp)
       window.addEventListener('pointercancel', onUp)
     },
-    [],
+    [done],
   )
 
   const outerRef = useRef<HTMLDivElement>(null)
