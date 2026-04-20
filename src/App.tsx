@@ -21,6 +21,9 @@ export default function App() {
   const [calOpen, setCalOpen] = useState(false)
   const headerRef = useRef<HTMLDivElement>(null)
   const [modalId, setModalId] = useState<string | null>(null)
+  const [selectedStickerId, setSelectedStickerId] = useState<string | null>(
+    null,
+  )
   const [persistHydrated, setPersistHydrated] = useState(() =>
     useDiaryStore.persist.hasHydrated(),
   )
@@ -57,6 +60,7 @@ export default function App() {
 
   const navigateBy = useCallback(
     (dir: 'prev' | 'next') => {
+      setSelectedStickerId(null)
       setSlideDir(dir === 'next' ? 'next' : 'prev')
       setViewingDate(shiftDateISO(viewingDate, dir === 'next' ? 1 : -1))
     },
@@ -65,6 +69,7 @@ export default function App() {
 
   const changeDate = useCallback(
     (d: string) => {
+      if (d !== viewingDate) setSelectedStickerId(null)
       if (d > viewingDate) setSlideDir('next')
       else if (d < viewingDate) setSlideDir('prev')
       else setSlideDir(null)
@@ -90,6 +95,7 @@ export default function App() {
     (id: string) => {
       removeSticker(id)
       setModalId(null)
+      setSelectedStickerId((cur) => (cur === id ? null : cur))
     },
     [removeSticker],
   )
@@ -127,9 +133,15 @@ export default function App() {
           viewingDate={viewingDate}
           stickers={stickers}
           slideDir={slideDir}
+          selectedStickerId={selectedStickerId}
+          onSelectSticker={setSelectedStickerId}
           onNavigateDay={navigateBy}
           onStickerMoveEnd={(id, pos) => updateSticker(id, { position: pos })}
-          onStickerOpen={(id) => setModalId(id)}
+          onStickerOpen={(id) => {
+            setModalId(id)
+            setSelectedStickerId(null)
+          }}
+          onStickerPatch={(id, patch) => updateSticker(id, patch)}
         />
       ) : (
         <div className="flex min-h-0 flex-1 items-center justify-center text-sm text-stone-500">

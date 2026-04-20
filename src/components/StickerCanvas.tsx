@@ -10,9 +10,12 @@ type Props = {
   viewingDate: string
   stickers: Sticker[]
   slideDir: NavDir
+  selectedStickerId: string | null
+  onSelectSticker: (id: string | null) => void
   onNavigateDay: (dir: 'prev' | 'next') => void
   onStickerMoveEnd: (id: string, pos: { x: number; y: number }) => void
   onStickerOpen: (id: string) => void
+  onStickerPatch: (id: string, patch: Partial<Sticker>) => void
 }
 
 const SWIPE_MIN = 56
@@ -22,16 +25,25 @@ export function StickerCanvas({
   viewingDate,
   stickers,
   slideDir,
+  selectedStickerId,
+  onSelectSticker,
   onNavigateDay,
   onStickerMoveEnd,
   onStickerOpen,
+  onStickerPatch,
 }: Props) {
   const swipe = useRef<{ x: number; y: number } | null>(null)
 
-  const onPointerDown = useCallback((e: React.PointerEvent) => {
-    if ((e.target as HTMLElement).closest('[data-sticker]')) return
-    swipe.current = { x: e.clientX, y: e.clientY }
-  }, [])
+  const onPointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      if (!(e.target as HTMLElement).closest('[data-sticker]')) {
+        onSelectSticker(null)
+      }
+      if ((e.target as HTMLElement).closest('[data-sticker]')) return
+      swipe.current = { x: e.clientX, y: e.clientY }
+    },
+    [onSelectSticker],
+  )
 
   const onPointerUp = useCallback(
     (e: React.PointerEvent) => {
@@ -75,8 +87,11 @@ export function StickerCanvas({
               <StickerCard
                 key={s.id}
                 sticker={s}
+                selected={selectedStickerId === s.id}
+                onSelect={(id) => onSelectSticker(id)}
                 onMoveEnd={onStickerMoveEnd}
                 onOpen={onStickerOpen}
+                onPatch={onStickerPatch}
               />
             ))}
           </div>

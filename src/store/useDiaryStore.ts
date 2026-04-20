@@ -5,6 +5,7 @@ import type { ChatMessage } from '@/types/chat'
 import type { Sticker } from '@/types/sticker'
 
 import { todayISO } from '@/lib/date'
+import { STICKER_LAYOUT } from '@/lib/stickerLayout'
 
 type DiaryState = {
   viewingDate: string
@@ -59,6 +60,11 @@ export const useDiaryStore = create<DiaryState>()(
           status: partial.status,
           position,
           type: 'text',
+          size: {
+            w: STICKER_LAYOUT.DEFAULT_W,
+            h: STICKER_LAYOUT.DEFAULT_H,
+          },
+          rotation: 0,
         }
         set({ stickers: [...stickers, sticker] })
         return sticker.id

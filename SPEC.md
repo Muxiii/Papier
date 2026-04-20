@@ -6,7 +6,7 @@
 
 ## 1. 产品是什么
 
-单页 Web 应用：按**日历日**查看一块**纸质风格画布**，上面放置**文字贴纸**（已完成 / 待办）。用户可通过**底部 AI 对话**从自然语言生成贴纸备选并贴到画布；贴纸可**拖拽**、**查看详情**、**编辑（限今天及未来）**、**切换状态**、**删除**。
+单页 Web 应用：按**日历日**查看一块**纸质风格画布**，上面放置**文字贴纸**（已完成 / 待办）。用户可通过**底部 AI 对话**从自然语言生成贴纸备选并贴到画布；贴纸可**拖拽**、**缩放与旋转**、**双击查看详情**、**编辑（限今天及未来）**、**切换状态**、**删除**。
 
 - 无账号、无多设备同步（v1）。
 - 数据默认存浏览器 **localStorage**（含贴纸与 AI 对话历史）。
@@ -37,7 +37,11 @@
 - **持久化 hydration**：在 Zustand `persist` 完成**再渲染可交互画布**，避免异步 rehydration 用旧数据覆盖刚拖动的位置（贴纸「弹回原位」问题）。
 - 贴纸 **Pointer** 拖拽：`pointerdown` 后在 **window** 上监听 `move/up`；起点坐标用 **ref** 同步，避免闭包读到旧位置；松手后把 `origin + 位移` 写回 store。
 - 贴纸 **done**：实色卡片；**todo**：半透明 + 虚线边框。
-- 点击贴纸（短按、位移小于阈值）：打开详情弹窗。
+- **选中 / 详情**：**单击**贴纸（短按、位移小于阈值）→ **选中**，显示琥珀描边与四角 **缩放点**；**双击**贴纸**内容区**（非边框条）→ 打开详情弹窗。点击画布空白处取消选中。换日或打开详情时清除选中。
+- **尺寸与旋转**：贴纸数据含 `size?: { w, h }`（px）、`rotation?: number`（顺时针度）；新建默认 **220×72**。旧存档无 `size` 时按默认宽高渲染。缩放时位移映射到贴纸**局部坐标**（随旋转角换算），长宽比自由，**最小宽 80px、最小高 40px**（`STICKER_LAYOUT`）。
+- **缩放点与旋转（类 Figma）**：四角 **18×18px** 缩放点（可见圆点约 8px），指针为斜向缩放；角外侧 **约 28px** 延伸的感应区主要在贴纸外，指针为 **grab**，拖曳为**旋转**；缩放点叠在感应区之上（z-index 更高）时优先缩放。无单独「旋转按钮」。
+- **边框双击重置**：选中时，沿卡片四边有 **14px** 宽的透明「边框」热区；**双击边框**将贴纸恢复为默认 **220×72** 与 **rotation: 0**；不修改未来将引入的「字体 / 样式」等字段（当前类型中亦无此类字段）。
+- **文字与内边距**：标题 `word-break` / `overflow-wrap` 可换行；**水平 padding ≈ 5.5%×宽**（夹 6~22px）、**垂直 padding ≈ 4%×宽**（夹 4~16px）。**字号**在 **10~28px** 内取**最大**仍能排进当前内盒（含「待办」行）的值：宽贴纸若横向仍有留白，不会只因变窄而缩小字，直至折行 + padding 所留空间不足以容纳当前字号时才缩小（Canvas `measureText` + 按字素折行，`layoutTypeForBox`）。
 
 ### 2.4 贴纸详情弹窗
 
@@ -112,6 +116,7 @@ sticker_diary/
     │   └── useDiaryStore.ts    # stickers、chatMessages、持久化
     ├── lib/
     │   ├── date.ts             # todayISO、normalizeStickerDateInput、isStickerContentEditable 等
+    │   ├── stickerLayout.ts    # 贴纸最小尺寸、缩放点热区、padding/字号与宽度关系、屏幕位移→局部位移
     │   └── api.ts              # postChat(messages, context)
     └── components/
         ├── DateHeader.tsx
@@ -145,6 +150,8 @@ type Sticker = {
   status: 'done' | 'todo'
   position: { x: number; y: number }
   type: 'text'
+  size?: { w: number; h: number }
+  rotation?: number       // 顺时针，度；缺省 0
 }
 
 // types/chat.ts
@@ -172,3 +179,4 @@ type ChatMessage =
 | — | 可编辑标题/简介（今日及未来）；hydration 门闸修复拖拽回弹；AI 对话持久化 + 滚底；修复候选贴纸重复添加；`types/chat.ts`；SPEC 同步。 |
 | — | **订阅修复**：`App` 用 `stickers` 数组 + `useMemo` 解决拖拽后不刷新；**AI 日期**：`postChat` 传 `anchorDate`/`clientToday`，候选含 `sticker_date`；`lib/date.normalizeStickerDateInput`。 |
 | — | **动态追问**：贴纸落画布后，AI 追问由固定句改为按事项类型定制（电影/公园/美食/演出/学习等），无法识别时回退通用模板。 |
+| — | **缩放与旋转**：单击选中 + 四角缩放；角外侧区旋转；双击内容开详情；`layoutTypeForBox` 按盒适配字号；边框双击恢复默认尺寸与角度。 |
