@@ -245,7 +245,7 @@ export function AIChatDrawer() {
                   <div
                     className={
                       m.role === 'user'
-                        ? 'max-w-[85%] rounded-2xl rounded-br-md bg-amber-600 px-3 py-2 text-sm text-white'
+                        ? 'max-w-[85%] rounded-2xl rounded-br-md bg-[#EDE3D4] px-3 py-2 text-sm text-stone-900'
                         : 'max-w-[90%] rounded-2xl rounded-bl-md bg-white px-3 py-2 text-sm text-stone-800 shadow-sm ring-1 ring-stone-200/80'
                     }
                   >

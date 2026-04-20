@@ -357,13 +357,12 @@ export function StickerCard({
   const top = posY + (drag?.y ?? 0)
 
   const hit = STICKER_LAYOUT.HANDLE_HIT_PX
-  const vh = STICKER_LAYOUT.HANDLE_VISUAL_PX
+  const squareHandle = 8
   const ext = STICKER_LAYOUT.ROTATE_CORNER_EXTENT_PX
   const rotateZoneSize = ext + 14
   const z = dragging || selected ? 25 : 10
 
-  const handleCls =
-    'absolute flex items-center justify-center rounded-full border border-amber-500/90 bg-white shadow-sm text-transparent'
+  const handleCls = 'absolute flex items-center justify-center'
 
   const rotateCornerStyle = (corner: Corner): CSSProperties => {
     const s: CSSProperties = {
@@ -410,13 +409,17 @@ export function StickerCard({
       }}
       onPointerDown={onPointerDownBody}
     >
+      {selected && (
+        <div
+          className="pointer-events-none absolute -inset-[2px] z-[12] border-[1.5px] border-[#D3BA92]"
+        />
+      )}
       <div
         className={[
           'relative box-border h-full w-full overflow-hidden rounded-xl text-left shadow-sm',
           done
             ? 'border border-amber-200/80 bg-amber-50/95 text-stone-800'
             : 'border border-dashed border-amber-400/70 bg-white/55 text-stone-700 backdrop-blur-[2px]',
-          selected ? 'ring-2 ring-amber-500/85 ring-offset-2 ring-offset-[#f5f0e8]' : '',
         ].join(' ')}
       >
         {selected && (
@@ -502,14 +505,14 @@ export function StickerCard({
                   corner === 'nw' || corner === 'se'
                     ? 'nwse-resize'
                     : 'nesw-resize',
-                zIndex: 5,
+                zIndex: 13,
                 touchAction: 'none',
               }}
               onPointerDown={onPointerDownResize(corner)}
             >
               <span
-                className="block rounded-full bg-amber-500"
-                style={{ width: vh, height: vh }}
+                className="block border-[1.5px] border-[#D3BA92] bg-white"
+                style={{ width: squareHandle, height: squareHandle }}
               />
             </div>
           ))}
