@@ -183,6 +183,13 @@ export function AIChatDrawer() {
 
   return (
     <div className="relative">
+      {open && (
+        <div
+          className="fixed inset-0 z-[35] bg-black/35"
+          role="presentation"
+          onClick={() => setOpen(false)}
+        />
+      )}
       {toast && (
         <div
           className="absolute bottom-[calc(100%+8px)] left-1/2 z-[60] max-w-[min(90vw,360px)] -translate-x-1/2 rounded-xl bg-stone-900 px-4 py-2.5 text-center text-sm text-white shadow-lg"
@@ -195,7 +202,7 @@ export function AIChatDrawer() {
       {!open && (
         <button
           type="button"
-          className="w-full rounded-t-xl border border-amber-900/15 bg-[#fdfbf7]/95 px-4 py-3 text-left text-sm text-stone-500 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] backdrop-blur-md transition hover:bg-[#fffdf8]"
+          className="w-full rounded-[999px] border border-amber-900/15 bg-[#fdfbf7]/95 px-5 py-3 text-left text-sm text-stone-500 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] backdrop-blur-md transition hover:bg-[#fffdf8]"
           onClick={() => setOpen(true)}
         >
           和 AI 聊聊今天的事…
@@ -203,8 +210,11 @@ export function AIChatDrawer() {
       )}
 
       {open && (
-        <div className="z-40 mt-2 flex max-h-[72vh] flex-col rounded-2xl border border-amber-900/15 bg-[#fdfbf7] shadow-2xl">
-            <div className="flex items-center justify-between border-b border-amber-900/10 px-4 py-3">
+        <div
+          className="relative z-[40] mt-2 flex max-h-[72vh] flex-col rounded-[28px] border border-amber-900/15 bg-[#fdfbf7] shadow-2xl"
+          onClick={(e) => e.stopPropagation()}
+        >
+            <div className="flex items-center justify-between border-b border-amber-900/10 px-5 py-3">
               <h2 className="text-sm font-semibold text-stone-900" id={id}>
                 和 AI 聊聊
               </h2>
@@ -282,7 +292,7 @@ export function AIChatDrawer() {
             </div>
 
             <form
-              className="border-t border-amber-900/10 p-3"
+              className="border-t border-amber-900/10 p-4"
               onSubmit={(e) => {
                 e.preventDefault()
                 void sendUser(input)
@@ -302,7 +312,7 @@ export function AIChatDrawer() {
                 />
                 <button
                   type="submit"
-                  className="shrink-0 rounded-xl bg-amber-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+                  className="shrink-0 rounded-xl bg-[#DEBD8C] px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
                   disabled={loading || !input.trim()}
                 >
                   发送

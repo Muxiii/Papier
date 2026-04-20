@@ -95,6 +95,7 @@ export default function App() {
       <main className="relative min-w-0 flex-1">
         {persistHydrated ? (
           <DiarySpread
+            activeDate={viewingDate}
             leftDate={leftDate}
             rightDate={rightDate}
             leftStickers={leftStickers}
