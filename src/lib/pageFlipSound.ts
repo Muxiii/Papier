@@ -1,7 +1,7 @@
 const FLIP_AUDIO_PATHS = {
-  1: '/单页翻页音效.MP3',
-  2: '/翻2次音效.MP3',
-  3: '/翻3次音效.MP3',
+  1: '/audio/单页翻页音效.MP3',
+  2: '/audio/翻2次音效.MP3',
+  3: '/audio/翻3次音效.MP3',
 } as const
 
 const audioCache: Partial<Record<1 | 2 | 3, HTMLAudioElement>> = {}

@@ -1,4 +1,4 @@
-const SLIDE_AUDIO_PATH = '/滑动.MP3'
+const SLIDE_AUDIO_PATH = '/audio/滑动.MP3'
 
 let slideAudio: HTMLAudioElement | null = null
 
