@@ -8,6 +8,7 @@ import {
   useState,
 } from 'react'
 
+import { sizeForPhotoSticker } from '@/lib/photoSticker'
 import {
   STICKER_LAYOUT,
   layoutTypeForBox,
@@ -114,19 +115,28 @@ export function StickerCard({
   const posY = liveRect?.y ?? sticker.position.y
   const rot = liveRot ?? baseRot
 
+  const isPhoto = sticker.type === 'photo'
   const isTodo = sticker.status === 'todo'
   const isNote = sticker.status === 'note'
   /** 布局测量：仅「已完成」无副标签行；待办 / Fragments 预留副标签高度 */
   const layoutDoneLike = sticker.status === 'done'
-  const metrics = useMemo(
-    () => layoutTypeForBox(w, h, sticker.title, layoutDoneLike),
-    [w, h, sticker.title, layoutDoneLike],
-  )
+  const metrics = useMemo(() => {
+    if (isPhoto) {
+      return {
+        padX: 0,
+        padY: 0,
+        fontSize: 12,
+        lineHeight: 16,
+        subSize: 10,
+      }
+    }
+    return layoutTypeForBox(w, h, sticker.title, layoutDoneLike)
+  }, [isPhoto, w, h, sticker.title, layoutDoneLike])
   const noteBodyLines = useMemo(() => {
-    if (!isNote) return 0
+    if (!isNote || isPhoto) return 0
     const available = h - 2 * metrics.padY - NOTE_TITLE_LINE - 4
     return Math.max(1, Math.floor(available / NOTE_BODY_LINE))
-  }, [h, isNote, metrics.padY])
+  }, [h, isNote, isPhoto, metrics.padY])
 
   const sizeRef = useRef({ w: baseW, h: baseH })
   const rotRef = useRef(baseRot)
@@ -253,17 +263,40 @@ export function StickerCard({
     onOpenRef.current(stickerIdRef.current)
   }, [])
 
-  const onDoubleClickBorderReset = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation()
-    e.preventDefault()
-    onPatchRef.current(stickerIdRef.current, {
-      size: {
-        w: STICKER_LAYOUT.DEFAULT_W,
-        h: STICKER_LAYOUT.DEFAULT_H,
-      },
-      rotation: 0,
-    })
-  }, [])
+  const onDoubleClickBorderReset = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation()
+      e.preventDefault()
+      const id = stickerIdRef.current
+      if (
+        sticker.type === 'photo' &&
+        sticker.imageNaturalW &&
+        sticker.imageNaturalH
+      ) {
+        const next = sizeForPhotoSticker(
+          sticker.imageNaturalW,
+          sticker.imageNaturalH,
+        )
+        onPatchRef.current(id, {
+          size: next,
+          rotation: 0,
+        })
+        return
+      }
+      onPatchRef.current(id, {
+        size: {
+          w: STICKER_LAYOUT.DEFAULT_W,
+          h: STICKER_LAYOUT.DEFAULT_H,
+        },
+        rotation: 0,
+      })
+    },
+    [
+      sticker.type,
+      sticker.imageNaturalW,
+      sticker.imageNaturalH,
+    ],
+  )
 
   const onPointerDownResize = useCallback(
     (corner: Corner) => (e: React.PointerEvent) => {
@@ -476,11 +509,13 @@ export function StickerCard({
       <div
         className={[
           'relative box-border h-full w-full overflow-hidden rounded-xl text-left',
-          isNote
-            ? 'border border-stone-200/80 bg-[repeating-linear-gradient(180deg,#fffefb_0px,#fffefb_18px,#f5f4ef_19px,#fffefb_20px)] text-stone-800 shadow-[1px_2px_0_rgba(0,0,0,0.08)]'
-            : isTodo
-              ? 'border border-dashed border-amber-400/70 bg-white/55 text-stone-700 shadow-sm backdrop-blur-[2px]'
-              : 'border border-amber-200/80 bg-amber-50/95 text-stone-800 shadow-sm',
+          isPhoto
+            ? 'border border-stone-300/80 bg-white text-stone-800 shadow-sm'
+            : isNote
+              ? 'border border-stone-200/80 bg-[repeating-linear-gradient(180deg,#fffefb_0px,#fffefb_18px,#f5f4ef_19px,#fffefb_20px)] text-stone-800 shadow-[1px_2px_0_rgba(0,0,0,0.08)]'
+              : isTodo
+                ? 'border border-dashed border-amber-400/70 bg-white/55 text-stone-700 shadow-sm backdrop-blur-[2px]'
+                : 'border border-amber-200/80 bg-amber-50/95 text-stone-800 shadow-sm',
         ].join(' ')}
       >
         {selected && (
@@ -511,54 +546,81 @@ export function StickerCard({
             />
           </>
         )}
-        <div
-          data-sticker-content
-          className="box-border h-full w-full"
-          style={{
-            paddingLeft: metrics.padX,
-            paddingRight: metrics.padX,
-            paddingTop: metrics.padY,
-            paddingBottom: metrics.padY,
-          }}
-          onDoubleClick={onDoubleClickContent}
-        >
-          <p
-            className="pointer-events-none font-medium"
-            style={{
-              fontSize: isNote ? NOTE_TITLE_SIZE : metrics.fontSize,
-              lineHeight: isNote
-                ? `${NOTE_TITLE_LINE}px`
-                : `${metrics.lineHeight}px`,
-              wordBreak: 'break-word',
-              overflowWrap: 'anywhere',
-            }}
+        {isPhoto && sticker.imageDataUrl ? (
+          <div
+            data-sticker-content
+            className="flex h-full w-full flex-col overflow-hidden"
+            onDoubleClick={onDoubleClickContent}
           >
-            {sticker.title}
-          </p>
-          {isNote && sticker.description.trim() ? (
+            <div className="min-h-0 flex-1 bg-white p-2">
+              <img
+                src={sticker.imageDataUrl}
+                alt=""
+                className="pointer-events-none h-full w-full object-contain select-none"
+                draggable={false}
+              />
+            </div>
+            <div
+              className="h-7 shrink-0 truncate border-t border-stone-200/80 bg-[#faf9f7] px-2 text-center text-[11px] leading-7 text-stone-600"
+              title={
+                sticker.description.trim()
+                  ? sticker.description.trim()
+                  : undefined
+              }
+            >
+              {sticker.description.trim() || '\u00a0'}
+            </div>
+          </div>
+        ) : (
+          <div
+            data-sticker-content
+            className="box-border h-full w-full"
+            style={{
+              paddingLeft: metrics.padX,
+              paddingRight: metrics.padX,
+              paddingTop: metrics.padY,
+              paddingBottom: metrics.padY,
+            }}
+            onDoubleClick={onDoubleClickContent}
+          >
             <p
-              className="pointer-events-none mt-1 overflow-hidden text-stone-600"
+              className="pointer-events-none font-medium"
               style={{
-                fontSize: NOTE_BODY_SIZE,
-                lineHeight: `${NOTE_BODY_LINE}px`,
-                display: '-webkit-box',
-                WebkitBoxOrient: 'vertical',
-                WebkitLineClamp: noteBodyLines,
-                textOverflow: 'ellipsis',
+                fontSize: isNote ? NOTE_TITLE_SIZE : metrics.fontSize,
+                lineHeight: isNote
+                  ? `${NOTE_TITLE_LINE}px`
+                  : `${metrics.lineHeight}px`,
+                wordBreak: 'break-word',
+                overflowWrap: 'anywhere',
               }}
             >
-              {sticker.description.trim()}
+              {sticker.title}
             </p>
-          ) : null}
-          {isTodo ? (
-            <span
-              className="pointer-events-none mt-0.5 block font-medium uppercase tracking-wide text-amber-700/80"
-              style={{ fontSize: metrics.subSize }}
-            >
-              待办
-            </span>
-          ) : null}
-        </div>
+            {isNote && sticker.description.trim() ? (
+              <p
+                className="pointer-events-none mt-1 overflow-hidden text-stone-600"
+                style={{
+                  fontSize: NOTE_BODY_SIZE,
+                  lineHeight: `${NOTE_BODY_LINE}px`,
+                  display: '-webkit-box',
+                  WebkitBoxOrient: 'vertical',
+                  WebkitLineClamp: noteBodyLines,
+                  textOverflow: 'ellipsis',
+                }}
+              >
+                {sticker.description.trim()}
+              </p>
+            ) : null}
+            {isTodo ? (
+              <span
+                className="pointer-events-none mt-0.5 block font-medium uppercase tracking-wide text-amber-700/80"
+                style={{ fontSize: metrics.subSize }}
+              >
+                待办
+              </span>
+            ) : null}
+          </div>
+        )}
       </div>
 
       {selected && (

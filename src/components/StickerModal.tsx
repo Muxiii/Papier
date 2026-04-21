@@ -25,12 +25,18 @@ export function StickerModal({
   const [draftTitle, setDraftTitle] = useState(() => sticker.title)
   const [draftDesc, setDraftDesc] = useState(() => sticker.description)
 
+  const isPhoto = sticker.type === 'photo'
   const isDone = sticker.status === 'done'
   const isTodo = sticker.status === 'todo'
   const isNote = sticker.status === 'note'
   const canEdit = isStickerContentEditable(sticker.date)
 
   const handleSaveEdit = () => {
+    if (isPhoto) {
+      onSaveEdit(sticker.id, { title: '', description: draftDesc })
+      onClose()
+      return
+    }
     const title = draftTitle.trim()
     if (!title) return
     onSaveEdit(sticker.id, { title, description: draftDesc })
@@ -43,7 +49,13 @@ export function StickerModal({
     onDelete(sticker.id)
   }
 
-  const statusLabel = isNote ? 'Fragments' : isDone ? '已完成' : '待办'
+  const statusLabel = isPhoto
+    ? '照片'
+    : isNote
+      ? 'Fragments'
+      : isDone
+        ? '已完成'
+        : '待办'
 
   return (
     <div
@@ -88,7 +100,53 @@ export function StickerModal({
             </svg>
           </button>
         </div>
-        {canEdit ? (
+        {isPhoto && sticker.imageDataUrl ? (
+          canEdit ? (
+            <>
+              <div className="mt-2 overflow-hidden rounded-xl border border-stone-200 bg-white p-2">
+                <img
+                  src={sticker.imageDataUrl}
+                  alt=""
+                  className="max-h-[220px] w-full object-contain"
+                  draggable={false}
+                />
+              </div>
+              <label className="mt-3 block text-sm text-stone-700">
+                <textarea
+                  className="mt-1 min-h-[100px] w-full resize-y rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-800"
+                  value={draftDesc}
+                  onChange={(e) => setDraftDesc(e.target.value)}
+                  placeholder="简介"
+                  aria-label="照片说明"
+                />
+              </label>
+              <button
+                type="button"
+                className="mt-4 w-full rounded-lg bg-[#DEBD8C] py-2.5 text-sm font-medium text-white transition hover:opacity-95"
+                onClick={handleSaveEdit}
+              >
+                保存修改
+              </button>
+            </>
+          ) : (
+            <>
+              <div className="mt-2 overflow-hidden rounded-xl border border-stone-200 bg-white p-2">
+                <img
+                  src={sticker.imageDataUrl}
+                  alt=""
+                  className="max-h-[220px] w-full object-contain"
+                  draggable={false}
+                />
+              </div>
+              <p className="mt-1 text-xs text-stone-500">
+                昨日及以前的贴纸不可编辑说明文字
+              </p>
+              <div className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-stone-700">
+                {sticker.description.trim() || '（暂无说明）'}
+              </div>
+            </>
+          )
+        ) : canEdit ? (
           <>
             <label className="mt-2 block text-sm text-stone-700">
               <input
@@ -135,7 +193,7 @@ export function StickerModal({
           </>
         )}
 
-        {isDone ? (
+        {!isPhoto && isDone ? (
           <>
             <button
               type="button"
@@ -145,7 +203,7 @@ export function StickerModal({
               标记为未完成
             </button>
           </>
-        ) : isTodo ? (
+        ) : !isPhoto && isTodo ? (
           <div className="mt-5 flex flex-col gap-2">
             <div className="flex gap-2">
               <button
@@ -164,7 +222,7 @@ export function StickerModal({
               </button>
             </div>
           </div>
-        ) : (
+        ) : !isPhoto && isNote ? (
           <div className="mt-5 flex flex-col gap-2">
             <button
               type="button"
@@ -174,7 +232,7 @@ export function StickerModal({
               转为待办
             </button>
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   )

@@ -4,6 +4,8 @@ import { StickerCard } from '@/components/StickerCard'
 import { formatStickerDate } from '@/lib/date'
 import type { Sticker } from '@/types/sticker'
 
+export type PasteAnchor = { date: string; x: number; y: number }
+
 type Props = {
   activeDate: string
   leftDate: string
@@ -17,6 +19,9 @@ type Props = {
   onStickerPatch: (id: string, patch: Partial<Sticker>) => void
   onFlipPrev: () => void
   onFlipNext: () => void
+  onDiaryPaperHoverChange?: (hovered: boolean) => void
+  onPasteAnchorChange?: (anchor: PasteAnchor | null) => void
+  onStickerAreaBounds?: (date: string, bounds: { width: number; height: number }) => void
 }
 
 type PageProps = {
@@ -31,6 +36,8 @@ type PageProps = {
   onStickerOpen: (id: string) => void
   onStickerPatch: (id: string, patch: Partial<Sticker>) => void
   onFlip?: () => void
+  onPasteAnchorChange?: (anchor: PasteAnchor | null) => void
+  onStickerAreaBounds?: (date: string, bounds: { width: number; height: number }) => void
 }
 
 function DiaryPage({
@@ -45,6 +52,8 @@ function DiaryPage({
   onStickerOpen,
   onStickerPatch,
   onFlip,
+  onPasteAnchorChange,
+  onStickerAreaBounds,
 }: PageProps) {
   const contentRef = useRef<HTMLDivElement>(null)
   /** 本次点击若用于取消选中，则不再触发翻页 */
@@ -70,6 +79,10 @@ function DiaryPage({
     observer.observe(el)
     return () => observer.disconnect()
   }, [])
+
+  useEffect(() => {
+    onStickerAreaBounds?.(date, bounds)
+  }, [date, bounds, onStickerAreaBounds])
 
   return (
     <div
@@ -99,7 +112,20 @@ function DiaryPage({
       >
         {formatStickerDate(date)}
       </div>
-      <div ref={contentRef} className="relative h-[540px]">
+      <div
+        ref={contentRef}
+        className="relative h-[540px]"
+        onPointerMove={(e) => {
+          const el = contentRef.current
+          if (!el || !onPasteAnchorChange) return
+          const r = el.getBoundingClientRect()
+          onPasteAnchorChange({
+            date,
+            x: e.clientX - r.left,
+            y: e.clientY - r.top,
+          })
+        }}
+      >
         {stickers.length === 0 && (
           <p className="px-4 py-4 text-[12px] text-stone-400">这天还没有贴纸记录</p>
         )}
@@ -134,6 +160,9 @@ export function DiarySpread({
   onStickerPatch,
   onFlipPrev,
   onFlipNext,
+  onDiaryPaperHoverChange,
+  onPasteAnchorChange,
+  onStickerAreaBounds,
 }: Props) {
   const sortedLeft = useMemo(
     () =>
@@ -153,7 +182,11 @@ export function DiarySpread({
   )
 
   return (
-    <div className="paper-dots h-full flex-1 overflow-hidden p-6 pb-20">
+    <div
+      className="paper-dots h-full flex-1 overflow-hidden p-6 pb-20"
+      onPointerEnter={() => onDiaryPaperHoverChange?.(true)}
+      onPointerLeave={() => onDiaryPaperHoverChange?.(false)}
+    >
       <div className="mx-auto max-w-[1180px]">
         <div className="relative flex gap-0">
           <DiaryPage
@@ -168,6 +201,8 @@ export function DiarySpread({
             onStickerOpen={onStickerOpen}
             onStickerPatch={onStickerPatch}
             onFlip={onFlipPrev}
+            onPasteAnchorChange={onPasteAnchorChange}
+            onStickerAreaBounds={onStickerAreaBounds}
           />
           <div className="relative w-6 shrink-0 overflow-hidden bg-gradient-to-r from-[#e6ddcf] via-[#f3ebdf] to-[#e7dece]">
             <div className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-stone-700/10" />
@@ -186,6 +221,8 @@ export function DiarySpread({
             onStickerOpen={onStickerOpen}
             onStickerPatch={onStickerPatch}
             onFlip={onFlipNext}
+            onPasteAnchorChange={onPasteAnchorChange}
+            onStickerAreaBounds={onStickerAreaBounds}
           />
         </div>
       </div>

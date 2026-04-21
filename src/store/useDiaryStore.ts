@@ -16,7 +16,7 @@ type DiaryState = {
     update: ChatMessage[] | ((prev: ChatMessage[]) => ChatMessage[]),
   ) => void
   addSticker: (
-    partial: Omit<Sticker, 'id' | 'position' | 'type'> & {
+    partial: Omit<Sticker, 'id' | 'position'> & {
       position?: { x: number; y: number }
     },
   ) => string
@@ -56,6 +56,7 @@ export const useDiaryStore = create<DiaryState>()(
           x: 32 + (idx % 4) * 36,
           y: 28 + Math.floor(idx / 4) * 112,
         }
+        const stickerType = partial.type ?? 'text'
         const sticker: Sticker = {
           id: newId(),
           title: partial.title,
@@ -63,8 +64,11 @@ export const useDiaryStore = create<DiaryState>()(
           description: partial.description ?? '',
           status: partial.status,
           position,
-          type: 'text',
-          size: {
+          type: stickerType,
+          imageDataUrl: partial.imageDataUrl,
+          imageNaturalW: partial.imageNaturalW,
+          imageNaturalH: partial.imageNaturalH,
+          size: partial.size ?? {
             w: STICKER_LAYOUT.DEFAULT_W,
             h: STICKER_LAYOUT.DEFAULT_H,
           },

@@ -44,7 +44,11 @@ function buildFollowupQuestion(title: string, userLine: string): string {
   return `要补充一点描述吗？比如「${title}」里最值得记的一点是什么？`
 }
 
-export function AIChatDrawer() {
+type DrawerProps = {
+  onOpenChange?: (open: boolean) => void
+}
+
+export function AIChatDrawer({ onOpenChange }: DrawerProps = {}) {
   const id = useId()
   const viewingDate = useDiaryStore((s) => s.viewingDate)
   const addSticker = useDiaryStore((s) => s.addSticker)
@@ -75,6 +79,10 @@ export function AIChatDrawer() {
     const t = window.setTimeout(() => setToast(null), 3200)
     return () => window.clearTimeout(t)
   }, [toast])
+
+  useEffect(() => {
+    onOpenChange?.(open)
+  }, [open, onOpenChange])
 
   const sendUser = useCallback(
     async (raw: string) => {
