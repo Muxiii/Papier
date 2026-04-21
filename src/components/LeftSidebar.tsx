@@ -7,7 +7,7 @@ import type { Sticker } from '@/types/sticker'
 type Props = {
   viewingDate: string
   stickers: Sticker[]
-  onSelectDate: (date: string) => void
+  onSelectDate: (date: string, source?: 'date' | 'todo') => void
 }
 
 type TabKey = 'date' | 'todo'
@@ -97,6 +97,20 @@ export function LeftSidebar({ viewingDate, stickers, onSelectDate }: Props) {
       })
   }, [stickers, today])
 
+  const dayDotCounts = useMemo(() => {
+    const m = new Map<string, { yellow: number; white: number }>()
+    for (const s of stickers) {
+      const cur = m.get(s.date) ?? { yellow: 0, white: 0 }
+      if (s.status === 'note') {
+        cur.white = Math.min(3, cur.white + 1)
+      } else {
+        cur.yellow = Math.min(3, cur.yellow + 1)
+      }
+      m.set(s.date, cur)
+    }
+    return m
+  }, [stickers])
+
   return (
     <aside className="flex h-svh w-[280px] shrink-0 flex-col border-r border-stone-300/70 bg-[#ece8e2]/95 p-4">
       <div className="flex items-center gap-3 border-b border-stone-300/70 pb-4">
@@ -162,6 +176,7 @@ export function LeftSidebar({ viewingDate, stickers, onSelectDate }: Props) {
                 const d = row.date
                 const selected = d === viewingDate
                 const future = d > today
+                const dots = dayDotCounts.get(d) ?? { yellow: 0, white: 0 }
                 return (
                   <button
                     key={row.key}
@@ -172,9 +187,25 @@ export function LeftSidebar({ viewingDate, stickers, onSelectDate }: Props) {
                         ? 'bg-[#E7E2DA] font-semibold text-stone-900'
                         : 'text-stone-700 hover:bg-stone-200/70'
                     } ${future ? 'opacity-30' : ''}`}
-                    onClick={() => onSelectDate(d)}
+                    onClick={() => onSelectDate(d, 'date')}
                   >
-                    {formatTabDate(d)}
+                    <span className="flex items-center justify-between gap-2">
+                      <span>{formatTabDate(d)}</span>
+                      <span className="flex items-center gap-1">
+                        {Array.from({ length: dots.yellow }, (_, i) => (
+                          <span
+                            key={`y-${d}-${i}`}
+                            className="h-1.5 w-1.5 rounded-full bg-amber-400/90"
+                          />
+                        ))}
+                        {Array.from({ length: dots.white }, (_, i) => (
+                          <span
+                            key={`w-${d}-${i}`}
+                            className="h-1.5 w-1.5 rounded-full border border-stone-300/80 bg-white/95"
+                          />
+                        ))}
+                      </span>
+                    </span>
                   </button>
                 )
               })}
@@ -196,7 +227,7 @@ export function LeftSidebar({ viewingDate, stickers, onSelectDate }: Props) {
                 key={t.id}
                 type="button"
                 className="block w-full rounded border border-stone-300/70 bg-white/70 px-2 py-1.5 text-left transition hover:bg-white"
-                onClick={() => onSelectDate(t.date)}
+                onClick={() => onSelectDate(t.date, 'todo')}
               >
                 <p className="truncate text-[12px] text-stone-800">{t.title}</p>
                 <p className="mt-0.5 text-[10px] text-stone-500">{formatTabDate(t.date)}</p>

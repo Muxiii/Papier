@@ -15,6 +15,8 @@ type Props = {
   onStickerMoveEnd: (id: string, pos: { x: number; y: number }) => void
   onStickerOpen: (id: string) => void
   onStickerPatch: (id: string, patch: Partial<Sticker>) => void
+  onFlipPrev: () => void
+  onFlipNext: () => void
 }
 
 type PageProps = {
@@ -28,6 +30,7 @@ type PageProps = {
   onStickerMoveEnd: (id: string, pos: { x: number; y: number }) => void
   onStickerOpen: (id: string) => void
   onStickerPatch: (id: string, patch: Partial<Sticker>) => void
+  onFlip?: () => void
 }
 
 function DiaryPage({
@@ -41,6 +44,7 @@ function DiaryPage({
   onStickerMoveEnd,
   onStickerOpen,
   onStickerPatch,
+  onFlip,
 }: PageProps) {
   const contentRef = useRef<HTMLDivElement>(null)
   const [bounds, setBounds] = useState<{ width: number; height: number }>({
@@ -73,6 +77,10 @@ function DiaryPage({
       ].join(' ')}
       onPointerDown={(e) => {
         if (!(e.target as HTMLElement).closest('[data-sticker]')) onSelectSticker(null)
+      }}
+      onClick={(e) => {
+        if ((e.target as HTMLElement).closest('[data-sticker]')) return
+        onFlip?.()
       }}
     >
       <div
@@ -116,6 +124,8 @@ export function DiarySpread({
   onStickerMoveEnd,
   onStickerOpen,
   onStickerPatch,
+  onFlipPrev,
+  onFlipNext,
 }: Props) {
   const sortedLeft = useMemo(
     () =>
@@ -149,6 +159,7 @@ export function DiarySpread({
             onStickerMoveEnd={onStickerMoveEnd}
             onStickerOpen={onStickerOpen}
             onStickerPatch={onStickerPatch}
+            onFlip={onFlipPrev}
           />
           <div className="relative w-6 shrink-0 overflow-hidden bg-gradient-to-r from-[#e6ddcf] via-[#f3ebdf] to-[#e7dece]">
             <div className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-stone-700/10" />
@@ -166,6 +177,7 @@ export function DiarySpread({
             onStickerMoveEnd={onStickerMoveEnd}
             onStickerOpen={onStickerOpen}
             onStickerPatch={onStickerPatch}
+            onFlip={onFlipNext}
           />
         </div>
       </div>

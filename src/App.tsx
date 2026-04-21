@@ -4,7 +4,8 @@ import { AIChatDrawer } from '@/components/AIChatDrawer'
 import { DiarySpread } from '@/components/DiarySpread'
 import { LeftSidebar } from '@/components/LeftSidebar'
 import { StickerModal } from '@/components/StickerModal'
-import { spreadDatesForViewing } from '@/lib/date'
+import { parseISODate, shiftDateISO, spreadDatesForViewing } from '@/lib/date'
+import { playPageFlip } from '@/lib/pageFlipSound'
 import { useDiaryStore } from '@/store/useDiaryStore'
 
 export default function App() {
@@ -50,12 +51,28 @@ export default function App() {
   }, [])
 
   const changeDate = useCallback(
-    (d: string) => {
-      if (d !== viewingDate) setSelectedStickerId(null)
+    (d: string, source: 'date' | 'todo' | 'page' = 'date') => {
+      if (d === viewingDate) return
+      const diffDays = Math.abs(
+        Math.round(
+          (parseISODate(d).getTime() - parseISODate(viewingDate).getTime()) /
+            86400000,
+        ),
+      )
+      playPageFlip(source === 'page' ? 1 : diffDays)
+      setSelectedStickerId(null)
       setViewingDate(d)
     },
     [setViewingDate, viewingDate],
   )
+
+  const onFlipPrev = useCallback(() => {
+    changeDate(shiftDateISO(viewingDate, -1), 'page')
+  }, [changeDate, viewingDate])
+
+  const onFlipNext = useCallback(() => {
+    changeDate(shiftDateISO(viewingDate, 1), 'page')
+  }, [changeDate, viewingDate])
 
   const onSelectSticker = useCallback(
     (id: string | null) => {
@@ -112,6 +129,8 @@ export default function App() {
               setSelectedStickerId(null)
             }}
             onStickerPatch={(id, patch) => updateSticker(id, patch)}
+            onFlipPrev={onFlipPrev}
+            onFlipNext={onFlipNext}
           />
         ) : (
           <div className="flex min-h-0 flex-1 items-center justify-center text-sm text-stone-500">
