@@ -16,6 +16,7 @@ import {
   stickerRotation,
   stickerSize,
 } from '@/lib/stickerLayout'
+import { playStickerSlide } from '@/lib/stickerSlideSound'
 import type { Sticker } from '@/types/sticker'
 
 type Corner = 'nw' | 'ne' | 'sw' | 'se'
@@ -31,6 +32,8 @@ type Props = {
 }
 
 const MOVE_THRESHOLD = 5
+const SLIDE_RETRIGGER_IDLE_MS = 180
+const SLIDE_MOVE_EPSILON = 2
 const NOTE_TITLE_SIZE = 11
 const NOTE_TITLE_LINE = 15
 const NOTE_BODY_SIZE = 13
@@ -166,6 +169,16 @@ export function StickerCard({
     const originX = positionRef.current.x
     const originY = positionRef.current.y
     const { w: startW, h: startH } = sizeRef.current
+    let hasPlayedSlideSinceIdle = false
+    let slideIdleTimer: number | null = null
+
+    const resetSlideGateAfterIdle = () => {
+      if (slideIdleTimer !== null) window.clearTimeout(slideIdleTimer)
+      slideIdleTimer = window.setTimeout(() => {
+        hasPlayedSlideSinceIdle = false
+        slideIdleTimer = null
+      }, SLIDE_RETRIGGER_IDLE_MS)
+    }
 
     const clamp = (v: number, min: number, max: number) =>
       Math.max(min, Math.min(max, v))
@@ -181,8 +194,16 @@ export function StickerCard({
 
     const onMove = (ev: PointerEvent) => {
       if (ev.pointerId !== pointerId) return
-      const nextX = originX + (ev.clientX - startClientX)
-      const nextY = originY + (ev.clientY - startClientY)
+      const rawDx = ev.clientX - startClientX
+      const rawDy = ev.clientY - startClientY
+      const moveDelta = Math.hypot(rawDx, rawDy)
+      if (moveDelta >= SLIDE_MOVE_EPSILON && !hasPlayedSlideSinceIdle) {
+        playStickerSlide()
+        hasPlayedSlideSinceIdle = true
+      }
+      resetSlideGateAfterIdle()
+      const nextX = originX + rawDx
+      const nextY = originY + rawDy
       const clamped = clampPosition(nextX, nextY)
       setDrag({
         x: clamped.x - originX,
@@ -196,6 +217,10 @@ export function StickerCard({
       window.removeEventListener('pointerup', onUp)
       window.removeEventListener('pointercancel', onUp)
       dragListeners.current = null
+      if (slideIdleTimer !== null) {
+        window.clearTimeout(slideIdleTimer)
+        slideIdleTimer = null
+      }
 
       const dx = ev.clientX - startClientX
       const dy = ev.clientY - startClientY
