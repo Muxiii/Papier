@@ -127,23 +127,25 @@ export function StickerModal({
           </>
         ) : isTodo ? (
           <div className="mt-5 flex flex-col gap-2">
+            <div className="flex gap-2">
+              <button
+                type="button"
+                className="min-w-0 flex-1 rounded-xl bg-[#DEBD8C] py-2.5 text-sm font-medium text-white transition hover:opacity-95"
+                onClick={() => onPatchSticker(sticker.id, { status: 'done' })}
+              >
+                已完成
+              </button>
+              <button
+                type="button"
+                className="min-w-0 flex-1 rounded-xl border border-stone-300 bg-white py-2.5 text-sm font-medium text-stone-700 transition hover:bg-stone-50"
+                onClick={onClose}
+              >
+                取消待办
+              </button>
+            </div>
             <button
               type="button"
-              className="flex w-full items-center justify-center gap-2 rounded-lg bg-amber-600 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-amber-700"
-              onClick={() => onPatchSticker(sticker.id, { status: 'done' })}
-            >
-              标记为已完成 <span aria-hidden>✓</span>
-            </button>
-            <button
-              type="button"
-              className="w-full py-1 text-center text-xs text-stone-500 underline-offset-2 hover:underline"
-              onClick={onClose}
-            >
-              取消
-            </button>
-            <button
-              type="button"
-              className="mt-2 w-full rounded-lg border border-red-200 bg-white py-2 text-sm text-red-600 transition hover:bg-red-50"
+              className="w-full rounded-lg border border-red-200 bg-white py-2 text-sm text-red-600 transition hover:bg-red-50"
               onClick={() => onDelete(sticker.id)}
             >
               删除贴纸

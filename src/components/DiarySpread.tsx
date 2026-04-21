@@ -47,6 +47,8 @@ function DiaryPage({
   onFlip,
 }: PageProps) {
   const contentRef = useRef<HTMLDivElement>(null)
+  /** 本次点击若用于取消选中，则不再触发翻页 */
+  const skipFlipForDeselectRef = useRef(false)
   const [bounds, setBounds] = useState<{ width: number; height: number }>({
     width: 0,
     height: 0,
@@ -76,10 +78,16 @@ function DiaryPage({
         pageClassName ?? '',
       ].join(' ')}
       onPointerDown={(e) => {
-        if (!(e.target as HTMLElement).closest('[data-sticker]')) onSelectSticker(null)
+        if ((e.target as HTMLElement).closest('[data-sticker]')) return
+        skipFlipForDeselectRef.current = selectedStickerId !== null
+        onSelectSticker(null)
       }}
       onClick={(e) => {
         if ((e.target as HTMLElement).closest('[data-sticker]')) return
+        if (skipFlipForDeselectRef.current) {
+          skipFlipForDeselectRef.current = false
+          return
+        }
         onFlip?.()
       }}
     >
