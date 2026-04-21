@@ -51,7 +51,7 @@ export function LeftSidebar({ viewingDate, stickers, onSelectDate }: Props) {
     let prevMonth = ''
 
     for (const d of dateItems) {
-      const monthLabel = format(parseISO(`${d}T12:00:00`), 'MMM').toUpperCase()
+      const monthLabel = format(parseISO(`${d}T12:00:00`), 'MMMM').toUpperCase()
       if (monthLabel !== prevMonth) {
         rows.push({ type: 'month', key: `month-${d}`, label: monthLabel })
         prevMonth = monthLabel
@@ -143,7 +143,7 @@ export function LeftSidebar({ viewingDate, stickers, onSelectDate }: Props) {
                     `[data-date="${viewingDate}"]`,
                   )
                   currentEl?.scrollIntoView({ block: 'center', behavior: 'smooth' })
-                }, 5000)
+                }, 3000)
               }}
             >
               {dateRows.map((row) => {
@@ -151,7 +151,8 @@ export function LeftSidebar({ viewingDate, stickers, onSelectDate }: Props) {
                   return (
                     <div
                       key={row.key}
-                      className="flex h-[34px] items-center px-2 text-[11px] font-medium uppercase tracking-[0.08em] text-stone-500"
+                      className="flex h-[34px] items-center px-2 text-[9px] font-medium uppercase tracking-[0.08em] text-stone-400"
+                      style={{ fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif' }}
                     >
                       {row.label}
                     </div>

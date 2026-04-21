@@ -20,6 +20,7 @@ type Props = {
 type PageProps = {
   date: string
   stickers: Sticker[]
+  pageClassName?: string
   active?: boolean
   dimmed?: boolean
   selectedStickerId: string | null
@@ -32,6 +33,7 @@ type PageProps = {
 function DiaryPage({
   date,
   stickers,
+  pageClassName,
   active,
   dimmed,
   selectedStickerId,
@@ -65,14 +67,17 @@ function DiaryPage({
 
   return (
     <div
-      className="relative h-[600px] flex-1 border border-stone-300/70 bg-[#fdfcf8]"
+      className={[
+        'relative h-[600px] flex-1 overflow-hidden border border-stone-300/70 bg-[#fdfcf8]',
+        pageClassName ?? '',
+      ].join(' ')}
       onPointerDown={(e) => {
         if (!(e.target as HTMLElement).closest('[data-sticker]')) onSelectSticker(null)
       }}
     >
       <div
         className={[
-          'border-b border-stone-300/60 px-4 py-2 text-[12px]',
+          'border-b border-stone-300/60 px-6 py-3 text-[12px]',
           active ? 'font-semibold text-stone-900' : 'text-stone-700',
         ].join(' ')}
       >
@@ -128,6 +133,7 @@ export function DiarySpread({
           <DiaryPage
             date={leftDate}
             stickers={sortedLeft}
+            pageClassName="rounded-l-[20px]"
             active={activeDate === leftDate}
             selectedStickerId={selectedStickerId}
             onSelectSticker={onSelectSticker}
@@ -143,6 +149,7 @@ export function DiarySpread({
           <DiaryPage
             date={rightDate}
             stickers={sortedRight}
+            pageClassName="rounded-r-[20px]"
             active={activeDate === rightDate}
             dimmed
             selectedStickerId={selectedStickerId}
