@@ -4,6 +4,7 @@ import { AIChatDrawer } from '@/components/AIChatDrawer'
 import { DiarySpread, type PasteAnchor } from '@/components/DiarySpread'
 import { LeftSidebar } from '@/components/LeftSidebar'
 import { StickerModal } from '@/components/StickerModal'
+import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { parseISODate, shiftDateISO, spreadDatesForViewing } from '@/lib/date'
 import {
   isClipboardImageType,
@@ -16,6 +17,11 @@ import { useDiaryStore } from '@/store/useDiaryStore'
 function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n))
 }
+
+/** 高于 AI 抽屉 (~20020) 与贴纸画布 (~10000)，低于贴纸详情弹窗 (21000) */
+const Z_NAV_MENU_BACKDROP = 20600
+const Z_NAV_MENU_DRAWER = 20650
+const Z_NAV_MENU_FAB = 20700
 
 function pickClipboardImageFile(dt: DataTransfer | null): File | null {
   if (!dt) return null
@@ -50,6 +56,10 @@ export default function App() {
   const [persistHydrated, setPersistHydrated] = useState(() =>
     useDiaryStore.persist.hasHydrated(),
   )
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  const isDrawerSidebar = useMediaQuery('(max-width: 960px)')
+  const isSinglePage = useMediaQuery('(max-width: 680px)')
 
   const diaryPaperHoveredRef = useRef(false)
   const aiChatOpenRef = useRef(false)
@@ -79,11 +89,32 @@ export default function App() {
     [allStickers, rightDate],
   )
 
+  const singleStickers = useMemo(
+    () =>
+      allStickers
+        .filter((st) => st.date === viewingDate)
+        .sort((a, b) => a.id.localeCompare(b.id)),
+    [allStickers, viewingDate],
+  )
+
   useEffect(() => {
     return useDiaryStore.persist.onFinishHydration(() =>
       setPersistHydrated(true),
     )
   }, [])
+
+  useEffect(() => {
+    if (!isDrawerSidebar) setSidebarOpen(false)
+  }, [isDrawerSidebar])
+
+  useEffect(() => {
+    if (!sidebarOpen || !isDrawerSidebar) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSidebarOpen(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [isDrawerSidebar, sidebarOpen])
 
   const handleStickerAreaBounds = useCallback(
     (date: string, bounds: { width: number; height: number }) => {
@@ -188,6 +219,14 @@ export default function App() {
     [setViewingDate, viewingDate],
   )
 
+  const handleSelectDate = useCallback(
+    (d: string, source?: 'date' | 'todo') => {
+      if (isDrawerSidebar) setSidebarOpen(false)
+      changeDate(d, source === 'todo' ? 'todo' : 'date')
+    },
+    [changeDate, isDrawerSidebar],
+  )
+
   const onFlipPrev = useCallback(() => {
     changeDate(shiftDateISO(viewingDate, -1), 'page')
   }, [changeDate, viewingDate])
@@ -229,20 +268,26 @@ export default function App() {
 
   return (
     <div className="flex h-svh overflow-hidden bg-[#e5e2dc]">
-      <LeftSidebar
-        viewingDate={viewingDate}
-        stickers={allStickers}
-        onSelectDate={changeDate}
-      />
+      {!isDrawerSidebar ? (
+        <LeftSidebar
+          mode="inline"
+          className="w-56 shrink-0 xl:w-[280px]"
+          viewingDate={viewingDate}
+          stickers={allStickers}
+          onSelectDate={handleSelectDate}
+        />
+      ) : null}
 
       <main className="relative min-w-0 flex-1 overflow-hidden">
         {persistHydrated ? (
           <DiarySpread
+            layout={isSinglePage ? 'single' : 'spread'}
             activeDate={viewingDate}
             leftDate={leftDate}
             rightDate={rightDate}
             leftStickers={leftStickers}
             rightStickers={rightStickers}
+            singleStickers={singleStickers}
             selectedStickerId={selectedStickerId}
             onSelectSticker={onSelectSticker}
             onStickerMoveEnd={(id, pos) => updateSticker(id, { position: pos })}
@@ -276,6 +321,62 @@ export default function App() {
           </div>
         </div>
       </main>
+
+      {isDrawerSidebar && !sidebarOpen ? (
+        <button
+          type="button"
+          className="fixed left-4 top-4 flex items-center gap-2 rounded-full border border-stone-300/70 bg-[#fdfbf7] py-1.5 pl-4 pr-2.5 shadow-lg ring-1 ring-black/5 transition hover:bg-[#fffdf8]"
+          style={{ zIndex: Z_NAV_MENU_FAB }}
+          onClick={() => setSidebarOpen(true)}
+          aria-expanded={false}
+          aria-controls="app-sidebar-drawer"
+          aria-label="打开导航菜单"
+        >
+          <img
+            src="/papier-icon.png"
+            alt=""
+            className="h-7 w-7 shrink-0 rounded-md border border-stone-300/50 bg-[#f4efe5] object-cover"
+          />
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-stone-200/60 text-stone-700">
+            <svg
+              viewBox="0 0 24 24"
+              className="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              aria-hidden
+            >
+              <path d="M5 7h14M5 12h14M5 17h14" />
+            </svg>
+          </span>
+        </button>
+      ) : null}
+
+      {isDrawerSidebar && sidebarOpen ? (
+        <>
+          <div
+            className="fixed inset-0 bg-black/45"
+            style={{ zIndex: Z_NAV_MENU_BACKDROP }}
+            role="presentation"
+            aria-hidden
+            onClick={() => setSidebarOpen(false)}
+          />
+          <div
+            id="app-sidebar-drawer"
+            className="fixed left-0 top-0 flex h-svh w-[min(300px,88vw)] flex-col border-r border-stone-300/70 bg-[#ece8e2] shadow-2xl"
+            style={{ zIndex: Z_NAV_MENU_DRAWER }}
+          >
+            <LeftSidebar
+              mode="drawer"
+              viewingDate={viewingDate}
+              stickers={allStickers}
+              onSelectDate={handleSelectDate}
+              onClose={() => setSidebarOpen(false)}
+            />
+          </div>
+        </>
+      ) : null}
 
       {modalId && persistHydrated && activeSticker ? (
         <StickerModal

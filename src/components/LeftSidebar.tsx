@@ -8,6 +8,11 @@ type Props = {
   viewingDate: string
   stickers: Sticker[]
   onSelectDate: (date: string, source?: 'date' | 'todo') => void
+  /** 抽屉内：显示关闭并回调 */
+  mode?: 'inline' | 'drawer'
+  onClose?: () => void
+  /** 与 `mode=inline` 搭配：由父级控制宽度（如 w-56 xl:w-[280px]） */
+  className?: string
 }
 
 type TabKey = 'date' | 'todo'
@@ -33,7 +38,14 @@ function daySummary(dateISO: string, stickers: Sticker[]): string {
   return `- 留下了 ${todo} 项待办`
 }
 
-export function LeftSidebar({ viewingDate, stickers, onSelectDate }: Props) {
+export function LeftSidebar({
+  viewingDate,
+  stickers,
+  onSelectDate,
+  mode = 'inline',
+  onClose,
+  className = '',
+}: Props) {
   const [tab, setTab] = useState<TabKey>('date')
   const today = todayISO()
   const dateListRef = useRef<HTMLDivElement>(null)
@@ -111,18 +123,51 @@ export function LeftSidebar({ viewingDate, stickers, onSelectDate }: Props) {
     return m
   }, [stickers])
 
+  const rootClass = [
+    'flex flex-col border-stone-300/70 bg-[#ece8e2]/95',
+    mode === 'drawer'
+      ? 'h-full min-h-0 w-full border-r-0 p-4'
+      : `h-svh shrink-0 border-r p-3 xl:p-4 ${className}`,
+  ]
+    .filter(Boolean)
+    .join(' ')
+
+  const Root = mode === 'drawer' ? 'div' : 'aside'
+
   return (
-    <aside className="flex h-svh w-[280px] shrink-0 flex-col border-r border-stone-300/70 bg-[#ece8e2]/95 p-4">
-      <div className="flex items-center gap-3 border-b border-stone-300/70 pb-4">
-        <img
-          src="/papier-icon.png"
-          alt="Papier logo"
-          className="h-10 w-10 rounded-[8px] border border-stone-300/60 bg-[#f4efe5] object-cover"
-        />
-        <div>
-          <p className="text-[15px] font-semibold text-stone-800">Papier</p>
+    <Root className={rootClass} role={mode === 'drawer' ? 'complementary' : undefined}>
+      {mode === 'drawer' ? (
+        <div className="mb-3 flex items-center justify-between border-b border-stone-300/70 pb-3">
+          <div className="flex items-center gap-2">
+            <img
+              src="/papier-icon.png"
+              alt="Papier logo"
+              className="h-9 w-9 rounded-[8px] border border-stone-300/60 bg-[#f4efe5] object-cover"
+            />
+            <p className="text-[15px] font-semibold text-stone-800">Papier</p>
+          </div>
+          <button
+            type="button"
+            className="rounded-lg px-2.5 py-1 text-sm text-stone-600 transition hover:bg-stone-200/80"
+            onClick={onClose}
+          >
+            关闭
+          </button>
         </div>
-      </div>
+      ) : (
+        <div className="flex items-center gap-2 border-b border-stone-300/70 pb-4 xl:gap-3">
+          <img
+            src="/papier-icon.png"
+            alt="Papier logo"
+            className="h-9 w-9 shrink-0 rounded-[8px] border border-stone-300/60 bg-[#f4efe5] object-cover xl:h-10 xl:w-10"
+          />
+          <div className="min-w-0">
+            <p className="truncate text-[14px] font-semibold text-stone-800 xl:text-[15px]">
+              Papier
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="mt-4 flex rounded-md bg-[#E2DDD4] p-0.5 text-[12px]">
         <button
@@ -244,7 +289,7 @@ export function LeftSidebar({ viewingDate, stickers, onSelectDate }: Props) {
           <span>用户名</span>
         </div>
       </div>
-    </aside>
+    </Root>
   )
 }
 
