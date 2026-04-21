@@ -48,6 +48,10 @@ export const useDiaryStore = create<DiaryState>()(
         const { stickers } = get()
         const sameDay = stickers.filter((s) => s.date === partial.date)
         const idx = sameDay.length
+        const topZ = stickers.reduce(
+          (max, s) => Math.max(max, s.zIndex ?? 0),
+          0,
+        )
         const position = partial.position ?? {
           x: 32 + (idx % 4) * 36,
           y: 28 + Math.floor(idx / 4) * 112,
@@ -65,6 +69,7 @@ export const useDiaryStore = create<DiaryState>()(
             h: STICKER_LAYOUT.DEFAULT_H,
           },
           rotation: 0,
+          zIndex: topZ + 1,
         }
         set({ stickers: [...stickers, sticker] })
         return sticker.id

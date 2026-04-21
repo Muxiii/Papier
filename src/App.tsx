@@ -4,7 +4,7 @@ import { AIChatDrawer } from '@/components/AIChatDrawer'
 import { DiarySpread } from '@/components/DiarySpread'
 import { LeftSidebar } from '@/components/LeftSidebar'
 import { StickerModal } from '@/components/StickerModal'
-import { shiftDateISO } from '@/lib/date'
+import { spreadDatesForViewing } from '@/lib/date'
 import { useDiaryStore } from '@/store/useDiaryStore'
 
 export default function App() {
@@ -22,8 +22,10 @@ export default function App() {
     useDiaryStore.persist.hasHydrated(),
   )
 
-  const leftDate = viewingDate
-  const rightDate = useMemo(() => shiftDateISO(viewingDate, 1), [viewingDate])
+  const { leftDate, rightDate } = useMemo(
+    () => spreadDatesForViewing(viewingDate),
+    [viewingDate],
+  )
 
   const leftStickers = useMemo(
     () =>
@@ -55,17 +57,19 @@ export default function App() {
     [setViewingDate, viewingDate],
   )
 
-  const activeSticker = useDiaryStore((s) =>
-    modalId ? s.stickers.find((x) => x.id === modalId) ?? null : null,
-  )
-
-  const onToggleStatus = useCallback(
-    (id: string) => {
-      const s = useDiaryStore.getState().stickers.find((x) => x.id === id)
-      if (!s) return
-      updateSticker(id, { status: s.status === 'done' ? 'todo' : 'done' })
+  const onSelectSticker = useCallback(
+    (id: string | null) => {
+      setSelectedStickerId(id)
+      if (!id) return
+      const stickers = useDiaryStore.getState().stickers
+      const topZ = stickers.reduce((max, s) => Math.max(max, s.zIndex ?? 0), 0)
+      updateSticker(id, { zIndex: topZ + 1 })
     },
     [updateSticker],
+  )
+
+  const activeSticker = useDiaryStore((s) =>
+    modalId ? s.stickers.find((x) => x.id === modalId) ?? null : null,
   )
 
   const onDeleteSticker = useCallback(
@@ -101,7 +105,7 @@ export default function App() {
             leftStickers={leftStickers}
             rightStickers={rightStickers}
             selectedStickerId={selectedStickerId}
-            onSelectSticker={setSelectedStickerId}
+            onSelectSticker={onSelectSticker}
             onStickerMoveEnd={(id, pos) => updateSticker(id, { position: pos })}
             onStickerOpen={(id) => {
               setModalId(id)
@@ -126,7 +130,7 @@ export default function App() {
           key={modalId}
           sticker={activeSticker}
           onClose={() => setModalId(null)}
-          onToggleStatus={onToggleStatus}
+          onPatchSticker={updateSticker}
           onDelete={onDeleteSticker}
           onSaveEdit={onSaveStickerEdit}
         />

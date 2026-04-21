@@ -31,6 +31,10 @@ type Props = {
 }
 
 const MOVE_THRESHOLD = 5
+const NOTE_TITLE_SIZE = 11
+const NOTE_TITLE_LINE = 15
+const NOTE_BODY_SIZE = 13
+const NOTE_BODY_LINE = 18
 
 function computeResize(
   corner: Corner,
@@ -107,11 +111,19 @@ export function StickerCard({
   const posY = liveRect?.y ?? sticker.position.y
   const rot = liveRot ?? baseRot
 
-  const done = sticker.status === 'done'
+  const isTodo = sticker.status === 'todo'
+  const isNote = sticker.status === 'note'
+  /** 布局测量：仅「已完成」无副标签行；待办 / Fragments 预留副标签高度 */
+  const layoutDoneLike = sticker.status === 'done'
   const metrics = useMemo(
-    () => layoutTypeForBox(w, h, sticker.title, done),
-    [w, h, sticker.title, done],
+    () => layoutTypeForBox(w, h, sticker.title, layoutDoneLike),
+    [w, h, sticker.title, layoutDoneLike],
   )
+  const noteBodyLines = useMemo(() => {
+    if (!isNote) return 0
+    const available = h - 2 * metrics.padY - NOTE_TITLE_LINE - 4
+    return Math.max(1, Math.floor(available / NOTE_BODY_LINE))
+  }, [h, isNote, metrics.padY])
 
   const sizeRef = useRef({ w: baseW, h: baseH })
   const rotRef = useRef(baseRot)
@@ -241,6 +253,8 @@ export function StickerCard({
       const { w: startW, h: startH } = sizeRef.current
       const startRot = rotRef.current
       const minW = STICKER_LAYOUT.MIN_W
+      const needsSubLabelMinH =
+        sticker.status === 'todo' || sticker.status === 'note'
 
       const onMove = (ev: PointerEvent) => {
         if (ev.pointerId !== pointerId) return
@@ -257,9 +271,9 @@ export function StickerCard({
           minW,
           STICKER_LAYOUT.MIN_H,
         )
-        const minH = done
-          ? STICKER_LAYOUT.MIN_H
-          : minTodoStickerHeight(draft.w, draft.h)
+        const minH = needsSubLabelMinH
+          ? minTodoStickerHeight(draft.w, draft.h)
+          : STICKER_LAYOUT.MIN_H
         const next = computeResize(
           corner,
           dxl,
@@ -291,9 +305,9 @@ export function StickerCard({
           minW,
           STICKER_LAYOUT.MIN_H,
         )
-        const minH = done
-          ? STICKER_LAYOUT.MIN_H
-          : minTodoStickerHeight(draft.w, draft.h)
+        const minH = needsSubLabelMinH
+          ? minTodoStickerHeight(draft.w, draft.h)
+          : STICKER_LAYOUT.MIN_H
         const next = computeResize(
           corner,
           dxl,
@@ -316,7 +330,7 @@ export function StickerCard({
       window.addEventListener('pointerup', onUp)
       window.addEventListener('pointercancel', onUp)
     },
-    [done],
+    [sticker.status],
   )
 
   const outerRef = useRef<HTMLDivElement>(null)
@@ -379,7 +393,8 @@ export function StickerCard({
   const squareHandle = 8
   const ext = STICKER_LAYOUT.ROTATE_CORNER_EXTENT_PX
   const rotateZoneSize = ext + 14
-  const z = dragging || selected ? 25 : 10
+  const zBase = 10 + (sticker.zIndex ?? 0)
+  const z = dragging || selected ? 10000 : zBase
 
   const handleCls = 'absolute flex items-center justify-center'
 
@@ -435,10 +450,12 @@ export function StickerCard({
       )}
       <div
         className={[
-          'relative box-border h-full w-full overflow-hidden rounded-xl text-left shadow-sm',
-          done
-            ? 'border border-amber-200/80 bg-amber-50/95 text-stone-800'
-            : 'border border-dashed border-amber-400/70 bg-white/55 text-stone-700 backdrop-blur-[2px]',
+          'relative box-border h-full w-full overflow-hidden rounded-xl text-left',
+          isNote
+            ? 'border border-stone-200/80 bg-[repeating-linear-gradient(180deg,#fffefb_0px,#fffefb_18px,#f5f4ef_19px,#fffefb_20px)] text-stone-800 shadow-[1px_2px_0_rgba(0,0,0,0.08)]'
+            : isTodo
+              ? 'border border-dashed border-amber-400/70 bg-white/55 text-stone-700 shadow-sm backdrop-blur-[2px]'
+              : 'border border-amber-200/80 bg-amber-50/95 text-stone-800 shadow-sm',
         ].join(' ')}
       >
         {selected && (
@@ -483,22 +500,39 @@ export function StickerCard({
           <p
             className="pointer-events-none font-medium"
             style={{
-              fontSize: metrics.fontSize,
-              lineHeight: `${metrics.lineHeight}px`,
+              fontSize: isNote ? NOTE_TITLE_SIZE : metrics.fontSize,
+              lineHeight: isNote
+                ? `${NOTE_TITLE_LINE}px`
+                : `${metrics.lineHeight}px`,
               wordBreak: 'break-word',
               overflowWrap: 'anywhere',
             }}
           >
             {sticker.title}
           </p>
-          {!done && (
+          {isNote && sticker.description.trim() ? (
+            <p
+              className="pointer-events-none mt-1 overflow-hidden text-stone-600"
+              style={{
+                fontSize: NOTE_BODY_SIZE,
+                lineHeight: `${NOTE_BODY_LINE}px`,
+                display: '-webkit-box',
+                WebkitBoxOrient: 'vertical',
+                WebkitLineClamp: noteBodyLines,
+                textOverflow: 'ellipsis',
+              }}
+            >
+              {sticker.description.trim()}
+            </p>
+          ) : null}
+          {isTodo ? (
             <span
               className="pointer-events-none mt-0.5 block font-medium uppercase tracking-wide text-amber-700/80"
               style={{ fontSize: metrics.subSize }}
             >
               待办
             </span>
-          )}
+          ) : null}
         </div>
       </div>
 

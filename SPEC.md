@@ -6,7 +6,7 @@
 
 ## 1. 产品是什么
 
-单页 Web 应用：左侧为 **280px 导航栏**（品牌、日期/待办切换、用户区），右侧为**双页并排日记画布**（当前日 + 下一日）。用户可通过**底部 AI 对话**从自然语言生成贴纸备选并贴到画布；贴纸可**拖拽**、**缩放与旋转**、**双击查看详情**、**编辑（限今天及未来）**、**切换状态**、**删除**。
+单页 Web 应用：左侧为 **280px 导航栏**（品牌、日期/待办切换、用户区），右侧为**双页并排日记画布**（相邻两个日历日；**每个日期固定落在左页或右页之一**，不随查看日左右对调）。用户可通过**底部 AI 对话**从自然语言生成贴纸备选并贴到画布；贴纸可**拖拽**、**缩放与旋转**、**双击查看详情**、**编辑（限今天及未来）**、**切换状态**、**删除**。
 
 - 无账号、无多设备同步（v1）。
 - 数据默认存浏览器 **localStorage**（含贴纸与 AI 对话历史）。
@@ -22,7 +22,7 @@
 - **日期 Tab**：
   - 日期列表覆盖更长时间范围（相对今天约前后 120 天）；滚动区上下有渐隐遮罩，暗示可继续滚动。
   - 点击某个日期后，列表会平滑滚动并将该日期自动居中。
-  - 鼠标滚轮可快速切换当前日期（平滑过渡）。
+  - 在日期列表内滚动**仅浏览**、不自动改选日期；滚动停止约 **3 秒**无点击则平滑回中当前已选日期。
 - 未来日期降低透明度（约 30%）。
   - 当前选中日期高亮。
   - 底部显示当日一句话总结：仅当天/过去日期显示；未来日期不显示。
@@ -33,9 +33,9 @@
 
 ### 2.2 双页日记视图
 
-- 主区为书本摊开式双页：左页 = `viewingDate`，右页 = `viewingDate + 1`，左右位置固定不交换。
+- 主区为书本摊开式双页：由 `spreadDatesForViewing(viewingDate)` 得到 `leftDate` / `rightDate`（相邻自然日）。**每个日历日按与固定锚点的日历日差奇偶性**（`datePageSlot`）永远落在左页或右页之一；切换查看日时，某一具体日期不会从左侧「挪到」右侧。
 - 去掉双页区域外层额外包框，仅保留纸页与中间书脊。
-- 右页默认添加 `60%` 白色蒙层弱化，突出当前选中左页。
+- 右页默认添加 `60%` 白色蒙层弱化，突出**当前查看日所在的那一页**（该页由 `viewingDate` 等于 `leftDate` 或 `rightDate` 决定）。
 - 中间书脊使用更浅的暖色渐变与明暗高光阴影，替代纯灰色直条。
 - 当前被导航选中的页面日期标题使用加粗样式强调。
 - 背景改为浅点状纸张纹理（`paper-dots`），呼应 Papier 氛围。
@@ -46,7 +46,8 @@
 - **列表订阅（重要）**：`App` 使用 `useDiaryStore((s) => s.stickers)` 订阅贴纸数组，再用 **`useMemo`** 分别过滤左右两页贴纸。
 - **持久化 hydration**：在 Zustand `persist` 完成**再渲染可交互画布**，避免异步 rehydration 用旧数据覆盖刚拖动的位置（贴纸「弹回原位」问题）。
 - 贴纸 **Pointer** 拖拽：`pointerdown` 后在 **window** 上监听 `move/up`；起点坐标用 **ref** 同步，避免闭包读到旧位置；松手后把 `origin + 位移` 写回 store。
-- 贴纸 **done**：实色卡片；**todo**：半透明 + 虚线边框。
+- 堆叠规则：每个贴纸带 `zIndex`；用户点击某贴纸 / Fragments 时会自动提升到当前最高层并持久化。
+- 贴纸 **done**：实色卡片；**todo**：半透明 + 虚线边框；**note**（Fragments）：近白色底卡 + 极浅横纹（笔记纸感），标题与正文为固定字号（标题小于正文）且不随卡片缩放变化；无额外「Fragments」副标签。
 - **选中 / 详情**：**单击**贴纸（短按、位移小于阈值）→ **选中**，显示无圆角的方形选中描边（`#D3BA92`）与四角 **缩放点**；**双击**贴纸**内容区**（非边框条）→ 打开详情弹窗。点击画布空白处取消选中。换日或打开详情时清除选中。
 - **尺寸与旋转**：贴纸数据含 `size?: { w, h }`（px）、`rotation?: number`（顺时针度）；新建默认 **220×72**。旧存档无 `size` 时按默认宽高渲染。缩放时位移映射到贴纸**局部坐标**（随旋转角换算），长宽比自由，**最小宽 80px、最小高 40px**（`STICKER_LAYOUT`）。
 - **缩放点与旋转（类 Figma）**：四角 **18×18px** 缩放点热区（可见为约 **8×8px** 的小方块，直角无圆角，边缘色 `#D3BA92`，内部白色填充）；缩放点边缘线与选中描边统一为 **1.5px**，且缩放点图层高于选中描边（避免被挡住）。指针为斜向缩放；角外侧 **约 28px** 延伸的感应区主要在贴纸外，指针为 **grab**，拖曳为**旋转**；缩放点叠在感应区之上（z-index 更高）时优先缩放。无单独「旋转按钮」。
@@ -61,7 +62,8 @@
 - **昨天及以前**：标题与简介**只读**，提示「昨日及以前的贴纸不可编辑标题与简介」。
 - **已完成**：「标记为未完成」。
 - **未完成**：「标记为已完成」、「取消」（关闭）、「删除贴纸」。
-- **删除贴纸**（两种状态均有）：一键移除并关闭弹窗（无二次确认）。
+- **Fragments（note）**：可编辑「标题」与「内容」；提供「转为待办」与「删除贴纸」（不提供“标记为已完成”按钮）。
+- **删除贴纸**（各状态）：一键移除并关闭弹窗（无二次确认）。
 
 ### 2.5 AI 对话
 
@@ -74,13 +76,13 @@
 - 请求走 `POST /api/chat`（Vite 开发时代理到本机 Express），**API Key 仅在服务端**，`.env` + `dotenv`。
 - **请求体**：`{ messages, context: { anchorDate, clientToday } }`（均为 `yyyy-MM-dd`）。`anchorDate` = App 当前**查看日** `viewingDate`；`clientToday` = 设备本地 `todayISO()`，供 System 消歧。
 - **LLM_PROVIDER**：`anthropic` | `openai` | `moonshot`（Moonshot：`baseURL` 默认 `https://api.moonshot.ai/v1`）。
-- AI 返回 JSON：`reply` + `candidates[]`，每条候选含 **`title`、`status`、`sticker_date`**（贴纸应落在哪一天）。服务端 System 要求：默认「明天」「昨天」等**相对日期相对 anchorDate** 推算；「今天」「这天」→ `anchorDate`；缺省或非法 `sticker_date` 时服务端回退为 `anchorDate`。
-- 前端 `addSticker` 使用 `normalizeStickerDateInput(c.sticker_date, viewingDate)` 再次校验；若贴纸落在**非当前查看日**，Toast 追加提示可切日期查看。
-- 候选卡片上可展示目标日期（与 `formatStickerDate` 一致）。
+- AI 返回 JSON：`reply` + `candidates[]`，每条候选含 **`title`、`status`（`done` | `todo` | `note`）、`sticker_date`**。服务端 System 要求模型区分**已完成事项 / 待办事项 / 纯记录 Fragments**；`sticker_date` 在服务端规范化时**默认回退为 `clientToday`**（与模型输出一致化）。
+- 前端从候选**添加贴纸**时：**日期一律取本地「今天」`todayISO()`**（与当前 `viewingDate` 无关）；若用户正在查看其他日期，Toast 提示可切到今天查看。
+- 候选卡片上展示状态文案（已完成 / 未完成 / Fragments）与「今天」日期提示。
 - System prompt 另要求标题**具体**（地名、店名等），避免泛化。
 - 用户点选候选贴纸：**禁止**在 `setState` 的 updater 里调用 `addSticker`（避免 React Strict Mode **重复执行**导致双贴纸）；应先 **`addSticker` 一次**，再 **`setChatMessages`** 更新气泡。
-- 点选后插入**动态追问文案**：根据事项关键词定制追问示例（如电影→「电影怎么样？」、公园→「那里美吗？」、美食→「味道怎么样？」）；若无法识别则回退通用追问。下一则用户输入可写入对应贴纸 `description`。
-- 点选后顶部 **Toast**：默认「「标题」已放到画布」；若 `sticker_date` ≠ 当前查看日，追加「（M月d日，可切日期查看）」。
+- 点选后插入**动态追问文案**：`note` 类型使用 Fragments 向短追问；`done`/`todo` 仍按事项关键词定制（电影/公园/美食等）或通用追问。下一则用户输入可写入对应贴纸 `description`。
+- 点选后顶部 **Toast**：默认「「标题」已放到画布」；若当前查看日不是今天，追加可切到今天查看的提示。
 
 ### 2.6 数据与持久化
 
@@ -129,12 +131,12 @@ sticker_diary/
     ├── store/
     │   └── useDiaryStore.ts    # stickers、chatMessages、持久化
     ├── lib/
-    │   ├── date.ts             # todayISO、normalizeStickerDateInput、isStickerContentEditable 等
+    │   ├── date.ts             # todayISO、spreadDatesForViewing、normalizeStickerDateInput 等
     │   ├── stickerLayout.ts    # 贴纸最小尺寸、缩放点热区、padding/字号与宽度关系、屏幕位移→局部位移
     │   └── api.ts              # postChat(messages, context)
     └── components/
         ├── LeftSidebar.tsx       # 左侧导航：日期/待办 Tab、总结、用户区
-        ├── DiarySpread.tsx       # 双页并排视图（左当前日 / 右次日）
+        ├── DiarySpread.tsx       # 双页并排视图（按固定奇偶槽位：每个日历日固定左或右页）
         ├── DateHeader.tsx
         ├── MiniCalendar.tsx
         ├── StickerCanvas.tsx
@@ -163,7 +165,7 @@ type Sticker = {
   title: string
   date: string            // yyyy-MM-dd
   description: string
-  status: 'done' | 'todo'
+  status: 'done' | 'todo' | 'note'
   position: { x: number; y: number }
   type: 'text'
   size?: { w: number; h: number }
@@ -171,7 +173,7 @@ type Sticker = {
 }
 
 // types/chat.ts
-type ChatCandidate = { title: string; status: 'done' | 'todo'; sticker_date?: string }
+type ChatCandidate = { title: string; status: 'done' | 'todo' | 'note'; sticker_date?: string }
 type ChatMessage =
   | { id: string; role: 'user'; content: string }
   | { id: string; role: 'assistant'; content: string; candidates?: ChatCandidate[] }
@@ -211,3 +213,5 @@ type ChatMessage =
 | — | **侧栏日期体验优化**：左上角图标放大到 `40x40`；日期/待办 Tab 底色改为 `#E2DDD4`；日期选中底色改为 `#E7E2DA`（文字色保持不变）；日期列表加入月份分界标记（如 `MAY`，灰色小字号，占一行高度）；移除滚轮自动选日，改为仅滚动浏览，并在滚动停止 5 秒后平滑回中当前已选日期。 |
 | — | **圆角与月份标签细调**：双页日记纸四角统一改为约 `20px` 圆角，并上调日期栏内边距以保证与边缘留白；日期列表自动回中等待时间由 5 秒缩短到 3 秒；月份分界标签改为完整月份全称（如 `APRIL`）、字号再降 2 号、使用 `Helvetica Neue` 无衬线并降低灰度。 |
 | — | **书脊内角修正**：去掉双页靠近书脊的四个内角圆角，仅保留外侧四角 `20px` 圆角（左页仅左侧圆角，右页仅右侧圆角）。 |
+| — | **双页日期槽位与 AI Fragments**：每个日历日按固定规则永远落在左页或右页（`spreadDatesForViewing`）；从 AI 候选添加的贴纸日期一律为本地「今天」；贴纸 `status` 增加 `note`（便签式 Fragments），服务端 JSON 与 UI 候选支持三态识别。 |
+| — | **Fragments 字体/样式与层级**：Fragments 改为固定字号（标题小于正文，不随缩放变化）；缩小时正文按可用行数自动 `...` 截断；去掉「Fragments」标签；底色改近白并加入浅横纹；点击任意贴纸或 Fragments 自动置顶（`zIndex` 提升）。 |

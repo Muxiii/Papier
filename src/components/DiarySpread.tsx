@@ -118,11 +118,19 @@ export function DiarySpread({
   onStickerPatch,
 }: Props) {
   const sortedLeft = useMemo(
-    () => [...leftStickers].sort((a, b) => a.id.localeCompare(b.id)),
+    () =>
+      [...leftStickers].sort(
+        (a, b) =>
+          (a.zIndex ?? 0) - (b.zIndex ?? 0) || a.id.localeCompare(b.id),
+      ),
     [leftStickers],
   )
   const sortedRight = useMemo(
-    () => [...rightStickers].sort((a, b) => a.id.localeCompare(b.id)),
+    () =>
+      [...rightStickers].sort(
+        (a, b) =>
+          (a.zIndex ?? 0) - (b.zIndex ?? 0) || a.id.localeCompare(b.id),
+      ),
     [rightStickers],
   )
 
@@ -135,6 +143,7 @@ export function DiarySpread({
             stickers={sortedLeft}
             pageClassName="rounded-l-[20px]"
             active={activeDate === leftDate}
+            dimmed={activeDate !== leftDate}
             selectedStickerId={selectedStickerId}
             onSelectSticker={onSelectSticker}
             onStickerMoveEnd={onStickerMoveEnd}
@@ -151,7 +160,7 @@ export function DiarySpread({
             stickers={sortedRight}
             pageClassName="rounded-r-[20px]"
             active={activeDate === rightDate}
-            dimmed
+            dimmed={activeDate !== rightDate}
             selectedStickerId={selectedStickerId}
             onSelectSticker={onSelectSticker}
             onStickerMoveEnd={onStickerMoveEnd}

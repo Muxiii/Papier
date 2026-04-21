@@ -6,7 +6,7 @@ import type { Sticker } from '@/types/sticker'
 type Props = {
   sticker: Sticker
   onClose: () => void
-  onToggleStatus: (id: string) => void
+  onPatchSticker: (id: string, patch: Partial<Sticker>) => void
   onDelete: (id: string) => void
   onSaveEdit: (
     id: string,
@@ -18,14 +18,16 @@ type Props = {
 export function StickerModal({
   sticker,
   onClose,
-  onToggleStatus,
+  onPatchSticker,
   onDelete,
   onSaveEdit,
 }: Props) {
   const [draftTitle, setDraftTitle] = useState(() => sticker.title)
   const [draftDesc, setDraftDesc] = useState(() => sticker.description)
 
-  const done = sticker.status === 'done'
+  const isDone = sticker.status === 'done'
+  const isTodo = sticker.status === 'todo'
+  const isNote = sticker.status === 'note'
   const canEdit = isStickerContentEditable(sticker.date)
 
   const handleSaveEdit = () => {
@@ -34,6 +36,8 @@ export function StickerModal({
     onSaveEdit(sticker.id, { title, description: draftDesc })
     onClose()
   }
+
+  const statusLabel = isNote ? 'Fragments' : isDone ? '已完成' : '待办'
 
   return (
     <div
@@ -50,7 +54,7 @@ export function StickerModal({
         {canEdit ? (
           <>
             <p className="text-xs font-medium text-stone-500">
-              {done ? '已完成' : '待办'} · 可编辑
+              {statusLabel} · 可编辑
             </p>
             <label className="mt-2 block text-sm text-stone-700">
               标题
@@ -66,12 +70,12 @@ export function StickerModal({
               {formatStickerDate(sticker.date)}
             </p>
             <label className="mt-3 block text-sm text-stone-700">
-              简介
+              {isNote ? '内容' : '简介'}
               <textarea
                 className="mt-1 min-h-[100px] w-full resize-y rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-800"
                 value={draftDesc}
                 onChange={(e) => setDraftDesc(e.target.value)}
-                placeholder="可选"
+                placeholder={isNote ? '记录的文字…' : '可选'}
               />
             </label>
             <button
@@ -85,7 +89,7 @@ export function StickerModal({
         ) : (
           <>
             <h2 className="flex items-center gap-2 text-lg font-semibold text-stone-900">
-              <span aria-hidden>{done ? '✅' : '🔒'}</span>
+              <span aria-hidden>{isNote ? '🗒' : isDone ? '✅' : '🔒'}</span>
               {sticker.title}
             </h2>
             <p className="mt-2 flex items-center gap-2 text-sm text-stone-600">
@@ -104,12 +108,12 @@ export function StickerModal({
           </>
         )}
 
-        {done ? (
+        {isDone ? (
           <>
             <button
               type="button"
               className="mt-5 w-full rounded-lg border border-stone-300 bg-white py-2 text-sm text-stone-700 transition hover:bg-stone-50"
-              onClick={() => onToggleStatus(sticker.id)}
+              onClick={() => onPatchSticker(sticker.id, { status: 'todo' })}
             >
               标记为未完成
             </button>
@@ -121,12 +125,12 @@ export function StickerModal({
               删除贴纸
             </button>
           </>
-        ) : (
+        ) : isTodo ? (
           <div className="mt-5 flex flex-col gap-2">
             <button
               type="button"
               className="flex w-full items-center justify-center gap-2 rounded-lg bg-amber-600 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-amber-700"
-              onClick={() => onToggleStatus(sticker.id)}
+              onClick={() => onPatchSticker(sticker.id, { status: 'done' })}
             >
               标记为已完成 <span aria-hidden>✓</span>
             </button>
@@ -136,6 +140,23 @@ export function StickerModal({
               onClick={onClose}
             >
               取消
+            </button>
+            <button
+              type="button"
+              className="mt-2 w-full rounded-lg border border-red-200 bg-white py-2 text-sm text-red-600 transition hover:bg-red-50"
+              onClick={() => onDelete(sticker.id)}
+            >
+              删除贴纸
+            </button>
+          </div>
+        ) : (
+          <div className="mt-5 flex flex-col gap-2">
+            <button
+              type="button"
+              className="w-full rounded-lg border border-stone-300 bg-white py-2 text-sm text-stone-700 transition hover:bg-stone-50"
+              onClick={() => onPatchSticker(sticker.id, { status: 'todo' })}
+            >
+              转为待办
             </button>
             <button
               type="button"

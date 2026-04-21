@@ -8,16 +8,18 @@ import {
 } from 'react'
 
 import { postChat } from '@/lib/api'
-import {
-  formatStickerDate,
-  normalizeStickerDateInput,
-  todayISO,
-} from '@/lib/date'
+import { formatStickerDate, todayISO } from '@/lib/date'
 import { useDiaryStore } from '@/store/useDiaryStore'
 import type { ChatCandidate, ChatMessage } from '@/types/chat'
+import type { Sticker } from '@/types/sticker'
 
 function genMsgId(): string {
   return crypto.randomUUID()
+}
+
+function normalizePickStatus(status: ChatCandidate['status']): Sticker['status'] {
+  if (status === 'todo' || status === 'note' || status === 'done') return status
+  return 'todo'
 }
 
 function buildFollowupQuestion(title: string, userLine: string): string {
@@ -141,25 +143,26 @@ export function AIChatDrawer() {
       const userLine =
         lastUser?.role === 'user' ? lastUser.content : ''
 
-      const stickerDate = normalizeStickerDateInput(
-        c.sticker_date,
-        viewingDate,
-      )
+      const stickerDate = todayISO()
+      const status = normalizePickStatus(c.status)
 
       const newId = addSticker({
         title: c.title,
         date: stickerDate,
         description: userLine,
-        status: c.status,
+        status,
       })
       const dateHint =
-        stickerDate !== viewingDate
-          ? `（${formatStickerDate(stickerDate)}，可切日期查看）`
+        viewingDate !== stickerDate
+          ? `（${formatStickerDate(stickerDate)}；你正在看 ${formatStickerDate(viewingDate)}，可切到今天查看）`
           : ''
       setToast(`「${c.title}」已放到画布${dateHint}`)
       setPendingDescId(newId)
 
-      const followup = buildFollowupQuestion(c.title, userLine)
+      const followup =
+        status === 'note'
+          ? '还想再记点什么吗？也可以再发一句补充到这条 Fragments 里。'
+          : buildFollowupQuestion(c.title, userLine)
       setChatMessages((p) => {
         const cleared = p.map((x) =>
           x.role === 'assistant' &&
@@ -180,6 +183,12 @@ export function AIChatDrawer() {
     },
     [addSticker, setChatMessages, viewingDate],
   )
+
+  const candidateStatusLabel = (s: ChatCandidate['status']) => {
+    if (s === 'done') return '已完成'
+    if (s === 'note') return 'Fragments'
+    return '未完成'
+  }
 
   return (
     <div className="relative">
@@ -265,18 +274,9 @@ export function AIChatDrawer() {
                             >
                               <span className="font-medium">{c.title}</span>
                               <span className="mt-0.5 block text-[10px] text-stone-500">
-                                {c.status === 'done' ? '已完成' : '未完成'}
-                                {c.sticker_date ? (
-                                  <>
-                                    {' · '}
-                                    {formatStickerDate(
-                                      normalizeStickerDateInput(
-                                        c.sticker_date,
-                                        viewingDate,
-                                      ),
-                                    )}
-                                  </>
-                                ) : null}
+                                {candidateStatusLabel(c.status)}
+                                {' · '}
+                                {formatStickerDate(todayISO())}
                               </span>
                             </button>
                           ))}

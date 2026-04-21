@@ -15,13 +15,13 @@ type ChatContextBody = {
 
 type CandidateParsed = {
   title: string
-  status: 'done' | 'todo'
+  status: 'done' | 'todo' | 'note'
   sticker_date?: string
 }
 
 type CandidateOut = {
   title: string
-  status: 'done' | 'todo'
+  status: 'done' | 'todo' | 'note'
   sticker_date: string
 }
 
@@ -32,30 +32,30 @@ function isValidYyyyMmDd(s: string): boolean {
 }
 
 function buildSystemPrompt(anchorDate: string, clientToday: string): string {
-  return `你是「贴纸日记」助手。根据用户说的话，判断是已完成的事还是待办，或需要澄清。
+  return `你是「Papier / 贴纸日记」助手。根据用户说的话，判断是：已完成事项、待办事项、还是只想把一段话记下来（Fragments 便签），或需要澄清。
 
-【当前日期上下文】（必须用于推算每条贴纸落在哪一天）
-- anchorDate=${anchorDate}：用户当前在 App 里**正在查看**的日历日（yyyy-MM-dd）。用户说「今天」「这天」「今儿」记录的事 → 贴纸的 sticker_date 应取 anchorDate。
-- clientToday=${clientToday}：用户设备本地的「真实今天」。仅当用户**明确**把事件锚在「现实世界的今天/明天」（与当前查看日明显不是同一天、且话里强调现实日历）时，可用 clientToday 推算「现实明天」等；**默认情况**下，用户说「明天」「后天」「昨天」等**相对日期**，一律相对 **anchorDate** 做自然日加减得到 sticker_date（例如用户正在看 4 月 17 日时说「明天去看电影」→ sticker_date 应为 4 月 18 日）。
+【当前日期上下文】
+- anchorDate=${anchorDate}：用户当前在 App 里**正在查看**的日历日（yyyy-MM-dd）。用于理解用户说「这天」「正在看的那天」等叙事。
+- clientToday=${clientToday}：用户设备本地的「真实今天」（yyyy-MM-dd）。**凡是要落到画布上的贴纸**，sticker_date 一律填 clientToday（客户端会把贴纸放到「今天」那一页，与当前查看日无关）。
 
-【状态规则】
-- 用户表达「今天做了」「已经完成」「去了」「做完了」等过去完成 → status 为 done
-- 「打算」「计划」「提醒我」「还没」「要做」等 → todo
-- 若无法判断，设置 ask_clarification 为 true，在 reply 中用一句中文问：「这件事完成了吗？」，candidates 为空数组
+【状态 status — 三选一】
+- done：用户明确表达某件**具体任务/活动**已经完成（做了、去了、做完了、打卡了等）。
+- todo：用户明确表达**具体任务/活动**尚未完成、计划去做、需要提醒（打算、计划、提醒我、还没、要做、待办等）。
+- note：用户主要是在**记录一段想法、摘抄、心情、金句、随笔（Fragments）**，而不是在标记某个可勾选任务的完成/未完成。此时 title 用简短主题词（可从原文提炼），不要把整段话塞进 title；用户原话会由客户端写入便签内容。
+- 若无法区分「任务」与「纯记录」，设置 ask_clarification 为 true，在 reply 里用一句中文追问（例如：想记成待办/已完成，还是只当 Fragments？），candidates 为空数组。
 
 【贴纸标题 title — 必须具体、可辨认，禁止空泛类别词】
-- 标题要「从用户原话里抽具体信息」：地名、店名、活动对象、具体行为。
-- 优先保留用户提到的专有名词（公园名、餐厅名、品牌名、书名等），可略作润色，但不要改成抽象大类。
-- 每个候选 title 建议 4～16 个字为宜（英文店名可保留原文）。
+- 对 done/todo：从用户原话里抽具体信息（地名、店名、活动对象、具体行为）。
+- 对 note：用 2～12 字的简短标题概括这段话（如「今日随笔」「书里一句话」），不要整段粘贴。
+- 每个候选 title 建议 4～16 个字为宜（英文可保留原文）。
 
 【贴纸日历日 sticker_date — 必填】
-- 每个 candidate 必须包含 sticker_date（yyyy-MM-dd），表示该贴纸应出现在 App 的哪一天画布上。
-- 用户给出具体月日（如「4月18号去看电影」）→ 换算为合理年份的 yyyy-MM-dd（可参照 anchorDate 所在年份补全）。
+- 每个 candidate 必须包含 sticker_date（yyyy-MM-dd）。**一律填 clientToday（${clientToday}）**。
 
 否则在 reply 里简短友好回应，并给出 2-3 个贴纸标题备选。
 
 你必须只输出一个 JSON 对象，不要 markdown，不要其它文字。格式严格如下：
-{"reply":"string","candidates":[{"title":"string","status":"done"|"todo","sticker_date":"yyyy-MM-dd"}],"ask_clarification":boolean}`
+{"reply":"string","candidates":[{"title":"string","status":"done"|"todo"|"note","sticker_date":"yyyy-MM-dd"}],"ask_clarification":boolean}`
 }
 
 function parseJsonFromAssistant(text: string): {
@@ -91,18 +91,26 @@ function parseJsonFromAssistant(text: string): {
   throw new Error('无法解析模型返回的 JSON')
 }
 
+function normalizeCandidateStatus(
+  s: CandidateParsed['status'] | undefined,
+): CandidateOut['status'] {
+  if (s === 'todo') return 'todo'
+  if (s === 'note') return 'note'
+  return 'done'
+}
+
 function finalizeCandidates(
   raw: CandidateParsed[] | undefined,
-  anchorDate: string,
+  clientToday: string,
 ): CandidateOut[] {
   const list = (raw ?? []).slice(0, 3)
   return list.map((c) => ({
     title: c.title,
-    status: c.status === 'todo' ? 'todo' : 'done',
+    status: normalizeCandidateStatus(c.status),
     sticker_date:
       c.sticker_date && isValidYyyyMmDd(c.sticker_date.trim())
         ? c.sticker_date.trim()
-        : anchorDate,
+        : clientToday,
   }))
 }
 
@@ -130,7 +138,7 @@ async function chatAnthropic(
     reply: data.reply,
     candidates: data.ask_clarification
       ? []
-      : finalizeCandidates(data.candidates, ctx.anchorDate),
+      : finalizeCandidates(data.candidates, ctx.clientToday),
   }
 }
 
@@ -163,7 +171,7 @@ async function chatOpenAI(
     reply: data.reply,
     candidates: data.ask_clarification
       ? []
-      : finalizeCandidates(data.candidates, ctx.anchorDate),
+      : finalizeCandidates(data.candidates, ctx.clientToday),
   }
 }
 
@@ -200,7 +208,7 @@ async function chatMoonshot(
     reply: data.reply,
     candidates: data.ask_clarification
       ? []
-      : finalizeCandidates(data.candidates, ctx.anchorDate),
+      : finalizeCandidates(data.candidates, ctx.clientToday),
   }
 }
 
