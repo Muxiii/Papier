@@ -1,6 +1,6 @@
 const FLIP_AUDIO_PATHS = {
   1: '/单页翻页音效.MP3',
-  2: '/翻2次音效.mp3',
+  2: '/翻2次音效.MP3',
   3: '/翻3次音效.MP3',
 } as const
 
@@ -23,8 +23,13 @@ function burstCount(stepCount: number) {
 
 export function playPageFlip(stepCount = 1) {
   const count = burstCount(Math.max(1, stepCount)) as 1 | 2 | 3
-  const audio = getAudioForCount(count)
-  audio.currentTime = 0
-  void audio.play().catch(() => {})
+  const baseAudio = getAudioForCount(count)
+  /**
+   * 不复用同一个播放实例，避免连续点击时出现
+   * "The play() request was interrupted" 导致的偶发静音。
+   */
+  const playbackAudio = baseAudio.cloneNode(true) as HTMLAudioElement
+  playbackAudio.currentTime = 0
+  void playbackAudio.play().catch(() => {})
 }
 

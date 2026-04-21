@@ -194,14 +194,14 @@ export function AIChatDrawer() {
     <div className="relative">
       {open && (
         <div
-          className="fixed inset-0 z-[35] bg-black/35"
+          className="fixed inset-0 z-[20000] bg-black/35"
           role="presentation"
           onClick={() => setOpen(false)}
         />
       )}
       {toast && (
         <div
-          className="absolute bottom-[calc(100%+8px)] left-1/2 z-[60] max-w-[min(90vw,360px)] -translate-x-1/2 rounded-xl bg-stone-900 px-4 py-2.5 text-center text-sm text-white shadow-lg"
+          className="absolute bottom-[calc(100%+8px)] left-1/2 z-[20020] max-w-[min(90vw,360px)] -translate-x-1/2 rounded-xl bg-stone-900 px-4 py-2.5 text-center text-sm text-white shadow-lg"
           role="status"
         >
           {toast}
@@ -220,7 +220,7 @@ export function AIChatDrawer() {
 
       {open && (
         <div
-          className="relative z-[40] mt-2 flex max-h-[72vh] flex-col rounded-[28px] border border-amber-900/15 bg-[#fdfbf7] shadow-2xl"
+          className="relative z-[20010] mt-2 flex max-h-[calc(100svh-52px)] flex-col rounded-[28px] border border-amber-900/15 bg-[#fdfbf7] shadow-2xl"
           onClick={(e) => e.stopPropagation()}
         >
             <div className="flex items-center justify-between border-b border-amber-900/10 px-5 py-3">

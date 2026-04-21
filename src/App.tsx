@@ -137,7 +137,7 @@ export default function App() {
             加载中…
           </div>
         )}
-        <div className="pointer-events-none absolute inset-x-6 bottom-7 z-30">
+        <div className="pointer-events-none absolute inset-x-6 bottom-7 z-[20005]">
           <div className="pointer-events-auto mx-auto max-w-[1180px]">
             <AIChatDrawer />
           </div>
