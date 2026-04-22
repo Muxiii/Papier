@@ -97,12 +97,16 @@ export function LeftSidebar({
     const futureEnd = shiftDateISO(today, 2)
     const pastStart = shiftDateISO(today, -7)
     return stickers
-      .filter((s) => s.status === 'todo')
+      .filter((s) => s.status === 'todo' || s.status === 'cancelled')
       .filter((s) => {
         if (s.date >= today && s.date <= futureEnd) return true
         return s.date < today && s.date >= pastStart
       })
       .sort((a, b) => {
+        const aCancelled = a.status === 'cancelled'
+        const bCancelled = b.status === 'cancelled'
+        if (aCancelled !== bCancelled) return aCancelled ? 1 : -1
+
         const aFuture = a.date >= today && a.date <= futureEnd
         const bFuture = b.date >= today && b.date <= futureEnd
         if (aFuture !== bFuture) return aFuture ? -1 : 1
@@ -112,11 +116,13 @@ export function LeftSidebar({
   }, [stickers, today])
 
   const dayDotCounts = useMemo(() => {
-    const m = new Map<string, { yellow: number; white: number }>()
+    const m = new Map<string, { yellow: number; white: number; gray: number }>()
     for (const s of stickers) {
-      const cur = m.get(s.date) ?? { yellow: 0, white: 0 }
+      const cur = m.get(s.date) ?? { yellow: 0, white: 0, gray: 0 }
       if (s.status === 'note') {
         cur.white = Math.min(3, cur.white + 1)
+      } else if (s.status === 'cancelled') {
+        cur.gray = Math.min(3, cur.gray + 1)
       } else {
         cur.yellow = Math.min(3, cur.yellow + 1)
       }
@@ -227,7 +233,7 @@ export function LeftSidebar({
                 const d = row.date
                 const selected = d === viewingDate
                 const future = d > today
-                const dots = dayDotCounts.get(d) ?? { yellow: 0, white: 0 }
+                const dots = dayDotCounts.get(d) ?? { yellow: 0, white: 0, gray: 0 }
                 return (
                   <button
                     key={row.key}
@@ -255,6 +261,12 @@ export function LeftSidebar({
                             className="h-1.5 w-1.5 rounded-full border border-stone-300/80 bg-white/95"
                           />
                         ))}
+                        {Array.from({ length: dots.gray }, (_, i) => (
+                          <span
+                            key={`g-${d}-${i}`}
+                            className="h-1.5 w-1.5 rounded-full bg-stone-400/80"
+                          />
+                        ))}
                       </span>
                     </span>
                   </button>
@@ -277,11 +289,24 @@ export function LeftSidebar({
               <button
                 key={t.id}
                 type="button"
-                className="block w-full rounded border border-stone-300/70 bg-white/70 px-2 py-1.5 text-left transition hover:bg-white"
+                className={`block w-full rounded border px-2 py-1.5 text-left transition ${
+                  t.status === 'cancelled'
+                    ? 'border-stone-300/80 bg-stone-100/80 hover:bg-stone-100'
+                    : 'border-stone-300/70 bg-white/70 hover:bg-white'
+                }`}
                 onClick={() => onSelectDate(t.date, 'todo')}
               >
-                <p className="truncate text-[12px] text-stone-800">{t.title}</p>
+                <p
+                  className={`truncate text-[12px] ${
+                    t.status === 'cancelled' ? 'text-stone-500' : 'text-stone-800'
+                  }`}
+                >
+                  {t.title}
+                </p>
                 <p className="mt-0.5 text-[10px] text-stone-500">{formatTabDate(t.date)}</p>
+                {t.status === 'cancelled' ? (
+                  <p className="mt-0.5 text-[10px] text-stone-500">已取消</p>
+                ) : null}
               </button>
             ))
           )}

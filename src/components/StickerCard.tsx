@@ -190,6 +190,7 @@ export function StickerCard({
   const isPhoto = sticker.type === 'photo'
   const isTodo = sticker.status === 'todo'
   const isNote = sticker.status === 'note'
+  const isCancelled = sticker.status === 'cancelled'
   /** 布局测量：仅「已完成」无副标签行；待办 / Fragments 预留副标签高度 */
   const layoutDoneLike = sticker.status === 'done'
   const metrics = useMemo(() => {
@@ -624,6 +625,8 @@ export function StickerCard({
               ? 'border border-stone-200/80 bg-[repeating-linear-gradient(180deg,#fffefb_0px,#fffefb_18px,#f5f4ef_19px,#fffefb_20px)] text-stone-800 shadow-[1px_2px_0_rgba(0,0,0,0.08)]'
               : isTodo
                 ? 'border border-dashed border-amber-400/70 bg-white/55 text-stone-700 shadow-sm backdrop-blur-[2px]'
+                : isCancelled
+                  ? 'border border-dashed border-stone-300/90 bg-stone-100/80 text-stone-500 shadow-sm'
                 : 'border border-amber-200/80 bg-amber-50/95 text-stone-800 shadow-sm',
         ].join(' ')}
       >
@@ -733,6 +736,13 @@ export function StickerCard({
                 style={{ fontSize: metrics.subSize }}
               >
                 待办
+              </span>
+            ) : isCancelled ? (
+              <span
+                className="pointer-events-none mt-0.5 block font-medium uppercase tracking-wide text-stone-500"
+                style={{ fontSize: metrics.subSize }}
+              >
+                已取消
               </span>
             ) : null}
           </div>

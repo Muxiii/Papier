@@ -29,6 +29,7 @@ export function StickerModal({
   const isDone = sticker.status === 'done'
   const isTodo = sticker.status === 'todo'
   const isNote = sticker.status === 'note'
+  const isCancelled = sticker.status === 'cancelled'
   const canEdit = isStickerContentEditable(sticker.date)
 
   const handleSaveEdit = () => {
@@ -55,6 +56,8 @@ export function StickerModal({
       ? 'Fragments'
       : isDone
         ? '已完成'
+        : isCancelled
+          ? '已取消'
         : '待办'
 
   return (
@@ -178,7 +181,9 @@ export function StickerModal({
         ) : (
           <>
             <h2 className="flex items-center gap-2 text-lg font-semibold text-stone-900">
-              <span aria-hidden>{isNote ? '🗒' : isDone ? '✅' : '🔒'}</span>
+              <span aria-hidden>
+                {isNote ? '🗒' : isDone ? '✅' : isCancelled ? '🚫' : '🔒'}
+              </span>
               {sticker.title}
             </h2>
             <p className="mt-1 text-xs text-stone-500">
@@ -216,11 +221,24 @@ export function StickerModal({
               <button
                 type="button"
                 className="min-w-0 flex-1 rounded-xl border border-stone-300 bg-white py-2.5 text-sm font-medium text-stone-700 transition hover:bg-stone-50"
-                onClick={onClose}
+                onClick={() => {
+                  onPatchSticker(sticker.id, { status: 'cancelled' })
+                  onClose()
+                }}
               >
                 取消待办
               </button>
             </div>
+          </div>
+        ) : !isPhoto && isCancelled ? (
+          <div className="mt-5 flex flex-col gap-2">
+            <button
+              type="button"
+              className="w-full rounded-xl border border-stone-300 bg-white py-2.5 text-sm font-medium text-stone-700 transition hover:bg-stone-50"
+              onClick={() => onPatchSticker(sticker.id, { status: 'todo' })}
+            >
+              恢复待办
+            </button>
           </div>
         ) : !isPhoto && isNote ? (
           <div className="mt-5 flex flex-col gap-2">

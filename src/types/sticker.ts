@@ -3,7 +3,7 @@ export type Sticker = {
   title: string
   date: string
   description: string
-  status: 'done' | 'todo' | 'note'
+  status: 'done' | 'todo' | 'note' | 'cancelled'
   position: { x: number; y: number }
   /** 缺省或 `text` 表示文字贴纸；`photo` 为粘贴图片 */
   type?: 'text' | 'photo'
