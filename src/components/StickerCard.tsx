@@ -8,7 +8,10 @@ import {
   useState,
 } from 'react'
 
-import { sizeForPhotoSticker } from '@/lib/photoSticker'
+import {
+  PHOTO_STICKER,
+  sizeForPhotoSticker,
+} from '@/lib/photoSticker'
 import {
   STICKER_LAYOUT,
   layoutTypeForBox,
@@ -82,6 +85,75 @@ function computeResize(
     const deficit = minH - newH
     newH = minH
     if (corner === 'nw' || corner === 'ne') newT -= deficit
+  }
+
+  return { x: newL, y: newT, w: newW, h: newH }
+}
+
+/** 照片贴纸：白边与底部说明行尺寸固定，仅图片区等比例缩放 */
+function computePhotoResize(
+  corner: Corner,
+  dxl: number,
+  dyl: number,
+  startPos: { x: number; y: number },
+  startW: number,
+  startH: number,
+  naturalW: number,
+  naturalH: number,
+): { x: number; y: number; w: number; h: number } {
+  const nw = Math.max(1, naturalW)
+  const nh = Math.max(1, naturalH)
+  const b = PHOTO_STICKER.BORDER_PX
+  const b2 = b * 2
+  const cap = PHOTO_STICKER.CAPTION_H
+
+  /** 与 `sizeForPhotoSticker` 一致，避免总高过小导致说明行与图片区挤压 */
+  const minPhotoOuterH = Math.max(80, STICKER_LAYOUT.MIN_H)
+
+  const draft = computeResize(
+    corner,
+    dxl,
+    dyl,
+    startPos,
+    startW,
+    startH,
+    STICKER_LAYOUT.MIN_W,
+    minPhotoOuterH,
+  )
+
+  const innerW = Math.max(1, draft.w - b2)
+  const innerH = Math.max(1, draft.h - cap - b2)
+  const sFit = Math.min(innerW / nw, innerH / nh)
+
+  const minInnerW = Math.max(1, STICKER_LAYOUT.MIN_W - b2)
+  const minInnerH = Math.max(1, minPhotoOuterH - cap - b2)
+  const sMin = Math.min(minInnerW / nw, minInnerH / nh)
+  const scale = Math.max(sMin, sFit)
+
+  const imgW = Math.max(1, Math.round(nw * scale))
+  const imgH = Math.max(1, Math.round(nh * scale))
+  const newW = imgW + b2
+  const newH = imgH + b2 + cap
+
+  const fixedRight = startPos.x + startW
+  const fixedBottom = startPos.y + startH
+  const fixedLeft = startPos.x
+  const fixedTop = startPos.y
+
+  let newL: number
+  let newT: number
+  if (corner === 'se') {
+    newL = fixedLeft
+    newT = fixedTop
+  } else if (corner === 'nw') {
+    newL = fixedRight - newW
+    newT = fixedBottom - newH
+  } else if (corner === 'ne') {
+    newL = fixedLeft
+    newT = fixedBottom - newH
+  } else {
+    newL = fixedRight - newW
+    newT = fixedTop
   }
 
   return { x: newL, y: newT, w: newW, h: newH }
@@ -313,35 +385,53 @@ export function StickerCard({
       const minW = STICKER_LAYOUT.MIN_W
       const needsSubLabelMinH =
         sticker.status === 'todo' || sticker.status === 'note'
+      const isPhotoResize =
+        sticker.type === 'photo' &&
+        sticker.imageNaturalW &&
+        sticker.imageNaturalH
 
       const onMove = (ev: PointerEvent) => {
         if (ev.pointerId !== pointerId) return
         const dx = ev.clientX - startX
         const dy = ev.clientY - startY
         const { dxl, dyl } = screenDeltaToLocal(dx, dy, startRot)
-        const draft = computeResize(
-          corner,
-          dxl,
-          dyl,
-          startPos,
-          startW,
-          startH,
-          minW,
-          STICKER_LAYOUT.MIN_H,
-        )
-        const minH = needsSubLabelMinH
-          ? minTodoStickerHeight(draft.w, draft.h)
-          : STICKER_LAYOUT.MIN_H
-        const next = computeResize(
-          corner,
-          dxl,
-          dyl,
-          startPos,
-          startW,
-          startH,
-          minW,
-          minH,
-        )
+        let next: { x: number; y: number; w: number; h: number }
+        if (isPhotoResize) {
+          next = computePhotoResize(
+            corner,
+            dxl,
+            dyl,
+            startPos,
+            startW,
+            startH,
+            sticker.imageNaturalW!,
+            sticker.imageNaturalH!,
+          )
+        } else {
+          const draft = computeResize(
+            corner,
+            dxl,
+            dyl,
+            startPos,
+            startW,
+            startH,
+            minW,
+            STICKER_LAYOUT.MIN_H,
+          )
+          const minH = needsSubLabelMinH
+            ? minTodoStickerHeight(draft.w, draft.h)
+            : STICKER_LAYOUT.MIN_H
+          next = computeResize(
+            corner,
+            dxl,
+            dyl,
+            startPos,
+            startW,
+            startH,
+            minW,
+            minH,
+          )
+        }
         setLiveRect(next)
       }
 
@@ -353,29 +443,43 @@ export function StickerCard({
         const dx = ev.clientX - startX
         const dy = ev.clientY - startY
         const { dxl, dyl } = screenDeltaToLocal(dx, dy, startRot)
-        const draft = computeResize(
-          corner,
-          dxl,
-          dyl,
-          startPos,
-          startW,
-          startH,
-          minW,
-          STICKER_LAYOUT.MIN_H,
-        )
-        const minH = needsSubLabelMinH
-          ? minTodoStickerHeight(draft.w, draft.h)
-          : STICKER_LAYOUT.MIN_H
-        const next = computeResize(
-          corner,
-          dxl,
-          dyl,
-          startPos,
-          startW,
-          startH,
-          minW,
-          minH,
-        )
+        let next: { x: number; y: number; w: number; h: number }
+        if (isPhotoResize) {
+          next = computePhotoResize(
+            corner,
+            dxl,
+            dyl,
+            startPos,
+            startW,
+            startH,
+            sticker.imageNaturalW!,
+            sticker.imageNaturalH!,
+          )
+        } else {
+          const draft = computeResize(
+            corner,
+            dxl,
+            dyl,
+            startPos,
+            startW,
+            startH,
+            minW,
+            STICKER_LAYOUT.MIN_H,
+          )
+          const minH = needsSubLabelMinH
+            ? minTodoStickerHeight(draft.w, draft.h)
+            : STICKER_LAYOUT.MIN_H
+          next = computeResize(
+            corner,
+            dxl,
+            dyl,
+            startPos,
+            startW,
+            startH,
+            minW,
+            minH,
+          )
+        }
         onPatchRef.current(stickerIdRef.current, {
           position: { x: next.x, y: next.y },
           size: { w: next.w, h: next.h },
@@ -388,7 +492,12 @@ export function StickerCard({
       window.addEventListener('pointerup', onUp)
       window.addEventListener('pointercancel', onUp)
     },
-    [sticker.status],
+    [
+      sticker.status,
+      sticker.type,
+      sticker.imageNaturalW,
+      sticker.imageNaturalH,
+    ],
   )
 
   const outerRef = useRef<HTMLDivElement>(null)
@@ -552,7 +661,10 @@ export function StickerCard({
             className="flex h-full w-full flex-col overflow-hidden"
             onDoubleClick={onDoubleClickContent}
           >
-            <div className="min-h-0 flex-1 bg-white p-2">
+            <div
+              className="min-h-0 flex-1 bg-white"
+              style={{ padding: PHOTO_STICKER.BORDER_PX }}
+            >
               <img
                 src={sticker.imageDataUrl}
                 alt=""
@@ -561,7 +673,11 @@ export function StickerCard({
               />
             </div>
             <div
-              className="h-7 shrink-0 truncate border-t border-stone-200/80 bg-[#faf9f7] px-2 text-center text-[11px] leading-7 text-stone-600"
+              className="shrink-0 truncate border-t border-stone-200/80 bg-[#faf9f7] px-2 text-center text-[11px] text-stone-600"
+              style={{
+                height: PHOTO_STICKER.CAPTION_H,
+                lineHeight: `${PHOTO_STICKER.CAPTION_H}px`,
+              }}
               title={
                 sticker.description.trim()
                   ? sticker.description.trim()
