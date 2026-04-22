@@ -1,5 +1,5 @@
 import { format, parseISO } from 'date-fns'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 
 import { shiftDateISO, todayISO } from '@/lib/date'
 import type { Sticker } from '@/types/sticker'
@@ -11,8 +11,9 @@ type Props = {
   /** 抽屉内：显示关闭并回调 */
   mode?: 'inline' | 'drawer'
   onClose?: () => void
-  /** 与 `mode=inline` 搭配：由父级控制宽度（如 w-56 xl:w-[280px]） */
+  /** 与 `mode=inline` 搭配：由父级控制宽度（如 style={{ width }}） */
   className?: string
+  style?: CSSProperties
 }
 
 type TabKey = 'date' | 'todo'
@@ -45,6 +46,7 @@ export function LeftSidebar({
   mode = 'inline',
   onClose,
   className = '',
+  style,
 }: Props) {
   const [tab, setTab] = useState<TabKey>('date')
   const today = todayISO()
@@ -127,7 +129,7 @@ export function LeftSidebar({
     'flex flex-col border-stone-300/70 bg-[#ece8e2]/95',
     mode === 'drawer'
       ? 'h-full min-h-0 w-full border-r-0 p-4'
-      : `h-svh shrink-0 border-r p-3 xl:p-4 ${className}`,
+      : `h-svh min-w-0 shrink-0 border-r p-2 sm:p-3 ${className}`,
   ]
     .filter(Boolean)
     .join(' ')
@@ -135,7 +137,11 @@ export function LeftSidebar({
   const Root = mode === 'drawer' ? 'div' : 'aside'
 
   return (
-    <Root className={rootClass} role={mode === 'drawer' ? 'complementary' : undefined}>
+    <Root
+      className={rootClass}
+      style={style}
+      role={mode === 'drawer' ? 'complementary' : undefined}
+    >
       {mode === 'drawer' ? (
         <div className="mb-3 flex items-center justify-between border-b border-stone-300/70 pb-3">
           <div className="flex items-center gap-2">

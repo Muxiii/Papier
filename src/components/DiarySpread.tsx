@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { StickerCard } from '@/components/StickerCard'
 import { formatStickerDate } from '@/lib/date'
+import { BOOK_DESIGN_WIDTH, DIARY_VIEWPORT } from '@/lib/diaryViewportLayout'
 import type { Sticker } from '@/types/sticker'
 
 export type PasteAnchor = { date: string; x: number; y: number }
@@ -10,6 +11,12 @@ export type DiaryLayoutMode = 'spread' | 'single'
 
 type Props = {
   layout?: DiaryLayoutMode
+  /** 双页时整体缩放 (0.8, 1]，由视口布局计算 */
+  spreadScale?: number
+  /** 水平白边（px），替代固定 Tailwind padding */
+  padXPx?: number
+  /** 单页时纸张宽度（px），与设计半页宽一致 */
+  singlePageWidthPx?: number
   activeDate: string
   leftDate: string
   rightDate: string
@@ -29,6 +36,9 @@ type Props = {
   onStickerAreaBounds?: (date: string, bounds: { width: number; height: number }) => void
 }
 
+const BOOK_DESIGN_W = BOOK_DESIGN_WIDTH
+const BOOK_PAGE_H = 600
+
 type PageProps = {
   date: string
   stickers: Sticker[]
@@ -45,6 +55,8 @@ type PageProps = {
   onBlankClickSplit?: (e: React.MouseEvent<HTMLDivElement>) => void
   onPasteAnchorChange?: (anchor: PasteAnchor | null) => void
   onStickerAreaBounds?: (date: string, bounds: { width: number; height: number }) => void
+  /** 双页 flex 行内均分宽度；单页固定宽 */
+  spreadFlex?: boolean
 }
 
 function DiaryPage({
@@ -62,6 +74,7 @@ function DiaryPage({
   onBlankClickSplit,
   onPasteAnchorChange,
   onStickerAreaBounds,
+  spreadFlex = true,
 }: PageProps) {
   const contentRef = useRef<HTMLDivElement>(null)
   /** 本次点击若用于取消选中，则不再触发翻页 */
@@ -95,7 +108,9 @@ function DiaryPage({
   return (
     <div
       className={[
-        'relative h-[600px] flex-1 overflow-hidden border border-stone-300/70 bg-[#fdfcf8]',
+        spreadFlex
+          ? 'relative h-[600px] min-w-0 flex-1 overflow-hidden border border-stone-300/70 bg-[#fdfcf8]'
+          : 'relative h-[600px] w-full shrink-0 overflow-hidden border border-stone-300/70 bg-[#fdfcf8]',
         pageClassName ?? '',
       ].join(' ')}
       onPointerDown={(e) => {
@@ -161,6 +176,9 @@ function DiaryPage({
 
 export function DiarySpread({
   layout = 'spread',
+  spreadScale = 1,
+  padXPx = DIARY_VIEWPORT.PAD_MIN,
+  singlePageWidthPx = DIARY_VIEWPORT.HALF_PAGE_W,
   activeDate,
   leftDate,
   rightDate,
@@ -208,77 +226,102 @@ export function DiarySpread({
     const el = e.currentTarget
     const r = el.getBoundingClientRect()
     const x = e.clientX - r.left
-    if (x < r.width / 2) onFlipPrev()
-    else onFlipNext()
+    const t = r.width / 3
+    if (x < t) onFlipPrev()
+    else if (x > 2 * t) onFlipNext()
   }
+
+  const scaledW = BOOK_DESIGN_W * spreadScale
+  const scaledH = BOOK_PAGE_H * spreadScale
 
   return (
     <div
-      className="paper-dots h-full flex-1 overflow-hidden p-3 pb-20 sm:p-6"
+      className="paper-dots h-full flex-1 overflow-hidden pb-20 pt-3 transition-[padding] duration-150 ease-out"
+      style={{
+        paddingLeft: padXPx,
+        paddingRight: padXPx,
+      }}
       onPointerEnter={() => onDiaryPaperHoverChange?.(true)}
       onPointerLeave={() => onDiaryPaperHoverChange?.(false)}
     >
-      <div className="mx-auto max-w-[1180px]">
-        {layout === 'single' ? (
-          <div className="relative flex justify-center">
-            <div className="w-full max-w-[640px]">
+      {layout === 'single' ? (
+        <div className="relative flex w-full justify-center">
+          <div
+            className="shrink-0 transition-[width] duration-150 ease-out"
+            style={{ width: singlePageWidthPx, maxWidth: '100%' }}
+          >
+            <DiaryPage
+              date={activeDate}
+              stickers={sortedSingle}
+              pageClassName="rounded-[20px]"
+              active
+              dimmed={false}
+              selectedStickerId={selectedStickerId}
+              onSelectSticker={onSelectSticker}
+              onStickerMoveEnd={onStickerMoveEnd}
+              onStickerOpen={onStickerOpen}
+              onStickerPatch={onStickerPatch}
+              onBlankClickSplit={handleSingleBlankClick}
+              onPasteAnchorChange={onPasteAnchorChange}
+              onStickerAreaBounds={onStickerAreaBounds}
+              spreadFlex={false}
+            />
+          </div>
+        </div>
+      ) : (
+        <div className="flex w-full justify-center">
+          <div
+            className="overflow-hidden transition-[width,height] duration-150 ease-out"
+            style={{ width: scaledW, height: scaledH }}
+          >
+            <div
+              className="relative flex gap-0"
+              style={{
+                width: BOOK_DESIGN_W,
+                height: BOOK_PAGE_H,
+                transform: `scale(${spreadScale})`,
+                transformOrigin: 'top left',
+              }}
+            >
               <DiaryPage
-                date={activeDate}
-                stickers={sortedSingle}
-                pageClassName="rounded-[20px]"
-                active
-                dimmed={false}
+                date={leftDate}
+                stickers={sortedLeft}
+                pageClassName="rounded-l-[20px]"
+                active={activeDate === leftDate}
+                dimmed={activeDate !== leftDate}
                 selectedStickerId={selectedStickerId}
                 onSelectSticker={onSelectSticker}
                 onStickerMoveEnd={onStickerMoveEnd}
                 onStickerOpen={onStickerOpen}
                 onStickerPatch={onStickerPatch}
-                onBlankClickSplit={handleSingleBlankClick}
+                onFlip={onFlipPrev}
+                onPasteAnchorChange={onPasteAnchorChange}
+                onStickerAreaBounds={onStickerAreaBounds}
+              />
+              <div className="relative w-6 shrink-0 overflow-hidden bg-gradient-to-r from-[#e6ddcf] via-[#f3ebdf] to-[#e7dece]">
+                <div className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-stone-700/10" />
+                <div className="absolute inset-y-0 left-0 w-1 bg-black/[0.04] blur-[2px]" />
+                <div className="absolute inset-y-0 right-0 w-1 bg-white/70 blur-[2px]" />
+              </div>
+              <DiaryPage
+                date={rightDate}
+                stickers={sortedRight}
+                pageClassName="rounded-r-[20px]"
+                active={activeDate === rightDate}
+                dimmed={activeDate !== rightDate}
+                selectedStickerId={selectedStickerId}
+                onSelectSticker={onSelectSticker}
+                onStickerMoveEnd={onStickerMoveEnd}
+                onStickerOpen={onStickerOpen}
+                onStickerPatch={onStickerPatch}
+                onFlip={onFlipNext}
                 onPasteAnchorChange={onPasteAnchorChange}
                 onStickerAreaBounds={onStickerAreaBounds}
               />
             </div>
           </div>
-        ) : (
-          <div className="relative flex gap-0">
-            <DiaryPage
-              date={leftDate}
-              stickers={sortedLeft}
-              pageClassName="rounded-l-[20px]"
-              active={activeDate === leftDate}
-              dimmed={activeDate !== leftDate}
-              selectedStickerId={selectedStickerId}
-              onSelectSticker={onSelectSticker}
-              onStickerMoveEnd={onStickerMoveEnd}
-              onStickerOpen={onStickerOpen}
-              onStickerPatch={onStickerPatch}
-              onFlip={onFlipPrev}
-              onPasteAnchorChange={onPasteAnchorChange}
-              onStickerAreaBounds={onStickerAreaBounds}
-            />
-            <div className="relative w-6 shrink-0 overflow-hidden bg-gradient-to-r from-[#e6ddcf] via-[#f3ebdf] to-[#e7dece]">
-              <div className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-stone-700/10" />
-              <div className="absolute inset-y-0 left-0 w-1 bg-black/[0.04] blur-[2px]" />
-              <div className="absolute inset-y-0 right-0 w-1 bg-white/70 blur-[2px]" />
-            </div>
-            <DiaryPage
-              date={rightDate}
-              stickers={sortedRight}
-              pageClassName="rounded-r-[20px]"
-              active={activeDate === rightDate}
-              dimmed={activeDate !== rightDate}
-              selectedStickerId={selectedStickerId}
-              onSelectSticker={onSelectSticker}
-              onStickerMoveEnd={onStickerMoveEnd}
-              onStickerOpen={onStickerOpen}
-              onStickerPatch={onStickerPatch}
-              onFlip={onFlipNext}
-              onPasteAnchorChange={onPasteAnchorChange}
-              onStickerAreaBounds={onStickerAreaBounds}
-            />
-          </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   )
 }

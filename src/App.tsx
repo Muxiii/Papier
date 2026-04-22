@@ -4,7 +4,7 @@ import { AIChatDrawer } from '@/components/AIChatDrawer'
 import { DiarySpread, type PasteAnchor } from '@/components/DiarySpread'
 import { LeftSidebar } from '@/components/LeftSidebar'
 import { StickerModal } from '@/components/StickerModal'
-import { useMediaQuery } from '@/hooks/useMediaQuery'
+import { useDiaryViewportLayout } from '@/hooks/useDiaryViewportLayout'
 import { parseISODate, shiftDateISO, spreadDatesForViewing } from '@/lib/date'
 import {
   isClipboardImageType,
@@ -58,8 +58,7 @@ export default function App() {
   )
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
-  const isDrawerSidebar = useMediaQuery('(max-width: 960px)')
-  const isSinglePage = useMediaQuery('(max-width: 680px)')
+  const layout = useDiaryViewportLayout()
 
   const diaryPaperHoveredRef = useRef(false)
   const aiChatOpenRef = useRef(false)
@@ -104,17 +103,20 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    if (!isDrawerSidebar) setSidebarOpen(false)
-  }, [isDrawerSidebar])
+    if (layout.useDrawer) return
+    queueMicrotask(() => {
+      setSidebarOpen((open) => (open ? false : open))
+    })
+  }, [layout.useDrawer])
 
   useEffect(() => {
-    if (!sidebarOpen || !isDrawerSidebar) return
+    if (!sidebarOpen || !layout.useDrawer) return
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setSidebarOpen(false)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [isDrawerSidebar, sidebarOpen])
+  }, [layout.useDrawer, sidebarOpen])
 
   const handleStickerAreaBounds = useCallback(
     (date: string, bounds: { width: number; height: number }) => {
@@ -221,10 +223,10 @@ export default function App() {
 
   const handleSelectDate = useCallback(
     (d: string, source?: 'date' | 'todo') => {
-      if (isDrawerSidebar) setSidebarOpen(false)
+      if (layout.useDrawer) setSidebarOpen(false)
       changeDate(d, source === 'todo' ? 'todo' : 'date')
     },
-    [changeDate, isDrawerSidebar],
+    [changeDate, layout.useDrawer],
   )
 
   const onFlipPrev = useCallback(() => {
@@ -268,20 +270,28 @@ export default function App() {
 
   return (
     <div className="flex h-svh overflow-hidden bg-[#e5e2dc]">
-      {!isDrawerSidebar ? (
+      {!layout.useDrawer ? (
         <LeftSidebar
           mode="inline"
-          className="w-56 shrink-0 xl:w-[280px]"
+          className="shrink-0"
+          style={{ width: layout.sidebarWidth }}
           viewingDate={viewingDate}
           stickers={allStickers}
           onSelectDate={handleSelectDate}
         />
       ) : null}
 
-      <main className="relative min-w-0 flex-1 overflow-hidden">
+      <main className="relative flex min-w-0 flex-1 flex-col overflow-hidden bg-[#e5e2dc]">
+        <div
+          className="min-h-0 flex-1 overflow-hidden bg-[#e5e2dc] transition-[padding-top] duration-150 ease-out"
+          style={{ paddingTop: layout.diaryOffsetTop }}
+        >
         {persistHydrated ? (
           <DiarySpread
-            layout={isSinglePage ? 'single' : 'spread'}
+            layout={layout.spreadMode ? 'spread' : 'single'}
+            spreadScale={layout.spreadScale}
+            padXPx={layout.padX}
+            singlePageWidthPx={layout.singlePageWidthPx}
             activeDate={viewingDate}
             leftDate={leftDate}
             rightDate={rightDate}
@@ -311,8 +321,15 @@ export default function App() {
             加载中…
           </div>
         )}
-        <div className="pointer-events-none absolute inset-x-6 bottom-7 z-[20005]">
-          <div className="pointer-events-auto mx-auto max-w-[1180px]">
+        </div>
+        <div
+          className="pointer-events-none absolute bottom-7 z-[20005] transition-[left,right] duration-150 ease-out"
+          style={{ left: layout.padX, right: layout.padX }}
+        >
+          <div
+            className="pointer-events-auto mx-auto w-full transition-[max-width] duration-150 ease-out"
+            style={{ maxWidth: layout.diaryContentWidthPx }}
+          >
             <AIChatDrawer
               onOpenChange={(open) => {
                 aiChatOpenRef.current = open
@@ -322,7 +339,7 @@ export default function App() {
         </div>
       </main>
 
-      {isDrawerSidebar && !sidebarOpen ? (
+      {layout.useDrawer && !sidebarOpen ? (
         <button
           type="button"
           className="fixed left-4 top-4 flex items-center gap-2 rounded-full border border-stone-300/70 bg-[#fdfbf7] py-1.5 pl-4 pr-2.5 shadow-lg ring-1 ring-black/5 transition hover:bg-[#fffdf8]"
@@ -353,7 +370,7 @@ export default function App() {
         </button>
       ) : null}
 
-      {isDrawerSidebar && sidebarOpen ? (
+      {layout.useDrawer && sidebarOpen ? (
         <>
           <div
             className="fixed inset-0 bg-black/45"
