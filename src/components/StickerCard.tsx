@@ -43,6 +43,13 @@ const NOTE_TITLE_LINE = 15
 const NOTE_BODY_SIZE = 13
 const NOTE_BODY_LINE = 18
 
+const ROTATE_CURSOR_BY_CORNER: Record<Corner, string> = {
+  nw: 'url("/rotate-cursor-nw.svg") 8 8, move',
+  ne: 'url("/rotate-cursor-ne.svg") 8 8, move',
+  se: 'url("/rotate-cursor-se.svg") 8 8, move',
+  sw: 'url("/rotate-cursor-sw.svg") 8 8, move',
+}
+
 function computeResize(
   corner: Corner,
   dxl: number,
@@ -514,9 +521,29 @@ export function StickerCard({
     const cy = r.top + r.height / 2
     const startAngle = Math.atan2(e.clientY - cy, e.clientX - cx)
     const startRot = rotRef.current
+    let hasPlayedSlideSinceIdle = false
+    let slideIdleTimer: number | null = null
+    let prevX = e.clientX
+    let prevY = e.clientY
+
+    const resetSlideGateAfterIdle = () => {
+      if (slideIdleTimer !== null) window.clearTimeout(slideIdleTimer)
+      slideIdleTimer = window.setTimeout(() => {
+        hasPlayedSlideSinceIdle = false
+        slideIdleTimer = null
+      }, SLIDE_RETRIGGER_IDLE_MS)
+    }
 
     const onMove = (ev: PointerEvent) => {
       if (ev.pointerId !== pointerId) return
+      const moveDelta = Math.hypot(ev.clientX - prevX, ev.clientY - prevY)
+      prevX = ev.clientX
+      prevY = ev.clientY
+      if (moveDelta >= SLIDE_MOVE_EPSILON && !hasPlayedSlideSinceIdle) {
+        playStickerSlide()
+        hasPlayedSlideSinceIdle = true
+      }
+      resetSlideGateAfterIdle()
       const a = Math.atan2(ev.clientY - cy, ev.clientX - cx)
       let deg = startRot + ((a - startAngle) * 180) / Math.PI
       while (deg > 180) deg -= 360
@@ -529,6 +556,10 @@ export function StickerCard({
       window.removeEventListener('pointermove', onMove)
       window.removeEventListener('pointerup', onUp)
       window.removeEventListener('pointercancel', onUp)
+      if (slideIdleTimer !== null) {
+        window.clearTimeout(slideIdleTimer)
+        slideIdleTimer = null
+      }
       const a = Math.atan2(ev.clientY - cy, ev.clientX - cx)
       let deg = startRot + ((a - startAngle) * 180) / Math.PI
       while (deg > 180) deg -= 360
@@ -571,7 +602,7 @@ export function StickerCard({
       width: rotateZoneSize,
       height: rotateZoneSize,
       zIndex: 4,
-      cursor: 'grab',
+      cursor: ROTATE_CURSOR_BY_CORNER[corner],
       touchAction: 'none',
     }
     if (corner === 'se') {

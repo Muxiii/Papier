@@ -52,17 +52,24 @@ function buildSystemPrompt(anchorDate: string, clientToday: string): string {
 【贴纸日历日 sticker_date — 必填】
 - 每个 candidate 必须包含 sticker_date（yyyy-MM-dd）。**一律填 clientToday（${clientToday}）**。
 
-否则在 reply 里简短友好回应，并给出 2-3 个贴纸标题备选。
+【纯问答模式（很重要）】
+- 如果用户是在问常识/事实/解释（例如“西雅图在哪里”“什么是xxx”），并不是在记录事项或待办：
+  - 直接在 reply 里给出自然、准确、简洁的中文答案；
+  - candidates 必须为空数组；
+  - ask_clarification 设为 false。
+- 不要为了凑贴纸而强行生成 candidates。
 
 你必须只输出一个 JSON 对象，不要 markdown，不要其它文字。格式严格如下：
 {"reply":"string","candidates":[{"title":"string","status":"done"|"todo"|"note","sticker_date":"yyyy-MM-dd"}],"ask_clarification":boolean}`
 }
 
-function parseJsonFromAssistant(text: string): {
-  reply: string
-  candidates: CandidateParsed[]
-  ask_clarification: boolean
-} {
+function parseJsonFromAssistant(text: string):
+  | {
+      reply: string
+      candidates: CandidateParsed[]
+      ask_clarification: boolean
+    }
+  | null {
   const trimmed = text.trim()
   const tryParse = (s: string) => {
     try {
@@ -88,7 +95,37 @@ function parseJsonFromAssistant(text: string): {
     parsed = tryParse(trimmed.slice(start, end + 1))
     if (parsed) return parsed
   }
-  throw new Error('无法解析模型返回的 JSON')
+  return null
+}
+
+function sanitizeAssistantReply(text: string): string {
+  const trimmed = text.trim()
+  if (!trimmed) return '我先记下这个问题。'
+  const fence = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/)
+  const raw = fence ? fence[1].trim() : trimmed
+  return raw.replace(/^\s*[{[].*?[}\]]\s*$/s, '').trim() || trimmed
+}
+
+function normalizeAssistantOutput(
+  text: string,
+  clientToday: string,
+): {
+  reply: string
+  candidates: CandidateOut[]
+} {
+  const data = parseJsonFromAssistant(text)
+  if (!data) {
+    return { reply: sanitizeAssistantReply(text), candidates: [] }
+  }
+  return {
+    reply:
+      typeof data.reply === 'string' && data.reply.trim()
+        ? data.reply.trim()
+        : '好的。',
+    candidates: data.ask_clarification
+      ? []
+      : finalizeCandidates(data.candidates, clientToday),
+  }
 }
 
 function normalizeCandidateStatus(
@@ -133,13 +170,7 @@ async function chatAnthropic(
   })
   const block = res.content.find((b) => b.type === 'text')
   if (!block || block.type !== 'text') throw new Error('模型无文本回复')
-  const data = parseJsonFromAssistant(block.text)
-  return {
-    reply: data.reply,
-    candidates: data.ask_clarification
-      ? []
-      : finalizeCandidates(data.candidates, ctx.clientToday),
-  }
+  return normalizeAssistantOutput(block.text, ctx.clientToday)
 }
 
 async function chatOpenAI(
@@ -166,13 +197,7 @@ async function chatOpenAI(
   })
   const text = res.choices[0]?.message?.content
   if (!text) throw new Error('模型无回复')
-  const data = parseJsonFromAssistant(text)
-  return {
-    reply: data.reply,
-    candidates: data.ask_clarification
-      ? []
-      : finalizeCandidates(data.candidates, ctx.clientToday),
-  }
+  return normalizeAssistantOutput(text, ctx.clientToday)
 }
 
 async function chatMoonshot(
@@ -203,13 +228,7 @@ async function chatMoonshot(
   })
   const text = res.choices[0]?.message?.content
   if (!text) throw new Error('模型无回复')
-  const data = parseJsonFromAssistant(text)
-  return {
-    reply: data.reply,
-    candidates: data.ask_clarification
-      ? []
-      : finalizeCandidates(data.candidates, ctx.clientToday),
-  }
+  return normalizeAssistantOutput(text, ctx.clientToday)
 }
 
 const app = express()

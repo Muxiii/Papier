@@ -246,7 +246,7 @@ export function AIChatDrawer({ onOpenChange }: DrawerProps = {}) {
 
             <div
               ref={listRef}
-              className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-3"
+              className="min-h-0 flex-1 space-y-7 overflow-y-auto px-7 pb-6 pt-3 sm:px-8"
               aria-labelledby={id}
             >
               {chatMessages.length === 0 && (
@@ -261,17 +261,14 @@ export function AIChatDrawer({ onOpenChange }: DrawerProps = {}) {
                     m.role === 'user' ? 'flex justify-end' : 'flex justify-start'
                   }
                 >
-                  <div
-                    className={
-                      m.role === 'user'
-                        ? 'max-w-[85%] rounded-2xl rounded-br-md bg-[#EDE3D4] px-3 py-2 text-sm text-stone-900'
-                        : 'max-w-[90%] rounded-2xl rounded-bl-md bg-white px-3 py-2 text-sm text-stone-800 shadow-sm ring-1 ring-stone-200/80'
-                    }
-                  >
-                    <p className="whitespace-pre-wrap">{m.content}</p>
-                    {m.role === 'assistant' &&
-                      m.candidates &&
-                      m.candidates.length > 0 && (
+                  {m.role === 'user' ? (
+                    <div className="max-w-[80%] rounded-[15px] rounded-br-[7px] bg-[#F3ECE2] px-4 py-2.5 text-sm text-stone-900">
+                      <p className="whitespace-pre-wrap">{m.content}</p>
+                    </div>
+                  ) : (
+                    <div className="max-w-[86%] text-sm text-stone-800">
+                      <p className="whitespace-pre-wrap">{m.content}</p>
+                      {m.candidates && m.candidates.length > 0 && (
                         <div className="mt-2 flex flex-wrap gap-2">
                           {m.candidates.map((c) => (
                             <button
@@ -290,7 +287,8 @@ export function AIChatDrawer({ onOpenChange }: DrawerProps = {}) {
                           ))}
                         </div>
                       )}
-                  </div>
+                    </div>
+                  )}
                 </div>
               ))}
               {loading && (
