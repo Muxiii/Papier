@@ -11,11 +11,15 @@ export const DIARY_VIEWPORT = {
   SIDEBAR_MAX: 280,
   SIDEBAR_MIN: 128,
   PAD_MIN: 8,
+  /** 单页模式整体等比缩放（包含贴纸） */
+  SINGLE_PAGE_SCALE: 0.9,
   DRAWER_APPROACH_RAMP: 100,
+  /** 所有内联模式下给日记的基础下移 */
+  BASE_DIARY_TOP: 8,
   /** 接近抽屉阈值时，内联主区内日记顶下移，避免与悬浮球重叠 */
-  FAB_AVOID_TOP: 52,
+  FAB_AVOID_TOP: 58,
   /** 抽屉模式下日记区额外下移（相对内联 FAB_AVOID） */
-  DRAWER_DIARY_EXTRA_TOP: 40,
+  DRAWER_DIARY_EXTRA_TOP: 20,
 } as const
 
 /** 双页摊开设计总宽（两半边 + 书脊） */
@@ -28,6 +32,7 @@ export type DiaryViewportLayout = {
   spreadMode: boolean
   /** 保留字段：当前逻辑双页恒为 1 */
   spreadScale: number
+  singleScale: number
   singlePageWidthPx: number
   /** 主区内左右对称白边（与日记、AI 对齐） */
   padX: number
@@ -46,18 +51,23 @@ export function singlePageWidthFromDesign(): number {
 }
 
 function diaryOffsetRamp(vw: number, minVwInline: number): number {
-  const { DRAWER_APPROACH_RAMP, FAB_AVOID_TOP } = DIARY_VIEWPORT
+  const { DRAWER_APPROACH_RAMP, FAB_AVOID_TOP, BASE_DIARY_TOP } = DIARY_VIEWPORT
   const t = clamp(
     0,
     1,
     (vw - minVwInline) / Math.max(1, DRAWER_APPROACH_RAMP),
   )
-  return Math.round((1 - t) * FAB_AVOID_TOP)
+  return Math.round(BASE_DIARY_TOP + (1 - t) * FAB_AVOID_TOP)
 }
 
 export function computeDiaryViewportLayout(vw: number): DiaryViewportLayout {
-  const { SIDEBAR_MAX, SIDEBAR_MIN, PAD_MIN, DRAWER_DIARY_EXTRA_TOP } =
-    DIARY_VIEWPORT
+  const {
+    SIDEBAR_MAX,
+    SIDEBAR_MIN,
+    PAD_MIN,
+    DRAWER_DIARY_EXTRA_TOP,
+    BASE_DIARY_TOP,
+  } = DIARY_VIEWPORT
 
   const BOOK_W = BOOK_DESIGN_WIDTH
   const singlePaperW = DIARY_VIEWPORT.HALF_PAGE_W
@@ -68,12 +78,13 @@ export function computeDiaryViewportLayout(vw: number): DiaryViewportLayout {
     sidebarWidth: 0,
     spreadMode: false,
     spreadScale: 1,
+    singleScale: DIARY_VIEWPORT.SINGLE_PAGE_SCALE,
     singlePageWidthPx: singlePaperW,
     padX: PAD_MIN,
     diaryOffsetTop: Math.round(
-      DIARY_VIEWPORT.FAB_AVOID_TOP + DRAWER_DIARY_EXTRA_TOP,
+      BASE_DIARY_TOP + DIARY_VIEWPORT.FAB_AVOID_TOP + DRAWER_DIARY_EXTRA_TOP,
     ),
-    diaryContentWidthPx: singlePaperW,
+    diaryContentWidthPx: singlePaperW * DIARY_VIEWPORT.SINGLE_PAGE_SCALE,
   })
 
   if (vw < minVwInline) {
@@ -92,6 +103,7 @@ export function computeDiaryViewportLayout(vw: number): DiaryViewportLayout {
       sidebarWidth: Math.round(sidebar),
       spreadMode: true,
       spreadScale: 1,
+      singleScale: 1,
       singlePageWidthPx: singlePaperW,
       padX: Math.round(padX * 2) / 2,
       diaryOffsetTop: diaryOffsetRamp(vw, minVwInline),
@@ -109,6 +121,7 @@ export function computeDiaryViewportLayout(vw: number): DiaryViewportLayout {
       sidebarWidth: Math.round(sidebar),
       spreadMode: true,
       spreadScale: 1,
+      singleScale: 1,
       singlePageWidthPx: singlePaperW,
       padX: PAD_MIN,
       diaryOffsetTop: diaryOffsetRamp(vw, minVwInline),
@@ -126,10 +139,11 @@ export function computeDiaryViewportLayout(vw: number): DiaryViewportLayout {
       sidebarWidth: Math.round(sidebar),
       spreadMode: false,
       spreadScale: 1,
+      singleScale: DIARY_VIEWPORT.SINGLE_PAGE_SCALE,
       singlePageWidthPx: singlePaperW,
       padX,
       diaryOffsetTop: diaryOffsetRamp(vw, minVwInline),
-      diaryContentWidthPx: singlePaperW,
+      diaryContentWidthPx: singlePaperW * DIARY_VIEWPORT.SINGLE_PAGE_SCALE,
     }
   }
 
@@ -143,10 +157,11 @@ export function computeDiaryViewportLayout(vw: number): DiaryViewportLayout {
       sidebarWidth: Math.round(sidebar),
       spreadMode: false,
       spreadScale: 1,
+      singleScale: DIARY_VIEWPORT.SINGLE_PAGE_SCALE,
       singlePageWidthPx: singlePaperW,
       padX: PAD_MIN,
       diaryOffsetTop: diaryOffsetRamp(vw, minVwInline),
-      diaryContentWidthPx: singlePaperW,
+      diaryContentWidthPx: singlePaperW * DIARY_VIEWPORT.SINGLE_PAGE_SCALE,
     }
   }
 

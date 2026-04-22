@@ -17,6 +17,8 @@ type Props = {
   padXPx?: number
   /** 单页时纸张宽度（px），与设计半页宽一致 */
   singlePageWidthPx?: number
+  /** 单页时整体等比缩放（含贴纸） */
+  singleScale?: number
   activeDate: string
   leftDate: string
   rightDate: string
@@ -37,7 +39,7 @@ type Props = {
 }
 
 const BOOK_DESIGN_W = BOOK_DESIGN_WIDTH
-const BOOK_PAGE_H = 600
+const BOOK_PAGE_H = 630
 
 type PageProps = {
   date: string
@@ -109,8 +111,8 @@ function DiaryPage({
     <div
       className={[
         spreadFlex
-          ? 'relative h-[600px] min-w-0 flex-1 overflow-hidden border border-stone-300/70 bg-[#fdfcf8]'
-          : 'relative h-[600px] w-full shrink-0 overflow-hidden border border-stone-300/70 bg-[#fdfcf8]',
+          ? 'relative h-[630px] min-w-0 flex-1 overflow-hidden border border-stone-300/70 bg-[#fdfcf8]'
+          : 'relative h-[630px] w-full shrink-0 overflow-hidden border border-stone-300/70 bg-[#fdfcf8]',
         pageClassName ?? '',
       ].join(' ')}
       onPointerDown={(e) => {
@@ -133,7 +135,7 @@ function DiaryPage({
     >
       <div
         className={[
-          'border-b border-stone-300/60 px-6 py-3 text-[12px]',
+          'flex h-[60px] items-center border-b border-stone-300/60 px-6 text-[12px]',
           active ? 'font-semibold text-stone-900' : 'text-stone-700',
         ].join(' ')}
       >
@@ -141,7 +143,7 @@ function DiaryPage({
       </div>
       <div
         ref={contentRef}
-        className="relative h-[540px]"
+        className="relative h-[570px]"
         onPointerMove={(e) => {
           const el = contentRef.current
           if (!el || !onPasteAnchorChange) return
@@ -179,6 +181,7 @@ export function DiarySpread({
   spreadScale = 1,
   padXPx = DIARY_VIEWPORT.PAD_MIN,
   singlePageWidthPx = DIARY_VIEWPORT.HALF_PAGE_W,
+  singleScale = DIARY_VIEWPORT.SINGLE_PAGE_SCALE,
   activeDate,
   leftDate,
   rightDate,
@@ -233,6 +236,8 @@ export function DiarySpread({
 
   const scaledW = BOOK_DESIGN_W * spreadScale
   const scaledH = BOOK_PAGE_H * spreadScale
+  const singleScaledW = singlePageWidthPx * singleScale
+  const singleScaledH = BOOK_PAGE_H * singleScale
 
   return (
     <div
@@ -247,25 +252,34 @@ export function DiarySpread({
       {layout === 'single' ? (
         <div className="relative flex w-full justify-center">
           <div
-            className="shrink-0 transition-[width] duration-150 ease-out"
-            style={{ width: singlePageWidthPx, maxWidth: '100%' }}
+            className="shrink-0 overflow-hidden transition-[width,height] duration-150 ease-out"
+            style={{ width: singleScaledW, height: singleScaledH, maxWidth: '100%' }}
           >
-            <DiaryPage
-              date={activeDate}
-              stickers={sortedSingle}
-              pageClassName="rounded-[20px]"
-              active
-              dimmed={false}
-              selectedStickerId={selectedStickerId}
-              onSelectSticker={onSelectSticker}
-              onStickerMoveEnd={onStickerMoveEnd}
-              onStickerOpen={onStickerOpen}
-              onStickerPatch={onStickerPatch}
-              onBlankClickSplit={handleSingleBlankClick}
-              onPasteAnchorChange={onPasteAnchorChange}
-              onStickerAreaBounds={onStickerAreaBounds}
-              spreadFlex={false}
-            />
+            <div
+              style={{
+                width: singlePageWidthPx,
+                height: BOOK_PAGE_H,
+                transform: `scale(${singleScale})`,
+                transformOrigin: 'top left',
+              }}
+            >
+              <DiaryPage
+                date={activeDate}
+                stickers={sortedSingle}
+                pageClassName="rounded-[20px]"
+                active
+                dimmed={false}
+                selectedStickerId={selectedStickerId}
+                onSelectSticker={onSelectSticker}
+                onStickerMoveEnd={onStickerMoveEnd}
+                onStickerOpen={onStickerOpen}
+                onStickerPatch={onStickerPatch}
+                onBlankClickSplit={handleSingleBlankClick}
+                onPasteAnchorChange={onPasteAnchorChange}
+                onStickerAreaBounds={onStickerAreaBounds}
+                spreadFlex={false}
+              />
+            </div>
           </div>
         </div>
       ) : (

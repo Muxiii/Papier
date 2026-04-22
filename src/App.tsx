@@ -281,15 +281,16 @@ export default function App() {
         />
       ) : null}
 
-      <main className="relative flex min-w-0 flex-1 flex-col overflow-hidden bg-[#e5e2dc]">
+      <main className="paper-dots relative flex min-w-0 flex-1 flex-col overflow-hidden">
         <div
-          className="min-h-0 flex-1 overflow-hidden bg-[#e5e2dc] transition-[padding-top] duration-150 ease-out"
+          className="paper-dots min-h-0 flex-1 overflow-hidden transition-[padding-top] duration-150 ease-out"
           style={{ paddingTop: layout.diaryOffsetTop }}
         >
         {persistHydrated ? (
           <DiarySpread
             layout={layout.spreadMode ? 'spread' : 'single'}
             spreadScale={layout.spreadScale}
+            singleScale={layout.singleScale}
             padXPx={layout.padX}
             singlePageWidthPx={layout.singlePageWidthPx}
             activeDate={viewingDate}
