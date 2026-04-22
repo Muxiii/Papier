@@ -18,7 +18,10 @@ export async function postChat(
   messages: { role: 'user' | 'assistant'; content: string }[],
   context: ChatContext,
 ): Promise<ChatResponse> {
-  const res = await fetch('/api/chat', {
+  const base = (import.meta.env.VITE_API_BASE_URL ?? '').trim()
+  const apiUrl = `${base.replace(/\/$/, '')}/api/chat`
+  const target = base ? apiUrl : '/api/chat'
+  const res = await fetch(target, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ messages, context }),

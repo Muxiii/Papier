@@ -94,7 +94,7 @@ export function computeDiaryViewportLayout(vw: number): DiaryViewportLayout {
   const mainW = (sb: number) => vw - sb
 
   // —— 双页：先收 pad，再收侧栏（侧栏恒为 SMAX 时 pad 尽量大）——
-  let sidebar = SIDEBAR_MAX
+  let sidebar: number = SIDEBAR_MAX
   let padX = (mainW(sidebar) - BOOK_W) / 2
 
   if (padX >= PAD_MIN) {

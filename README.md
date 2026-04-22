@@ -25,6 +25,42 @@ npm run build
 
 产物在 `dist/`。部署静态前端时，需要单独部署 `server/index.ts` 对应的 Node 服务或使用 Serverless，并把前端的 `/api` 指向该服务。
 
+## 线上部署（Vercel + Render）
+
+推荐拆成两部分：
+- **Render** 托管 `server/index.ts`（对外提供 `/api/chat`）
+- **Vercel** 托管 `dist/`（前端页面）
+
+### 1) 先部署 Render（后端）
+
+1. 在 Render 新建 **Web Service**，连接本仓库（目录选 `sticker_diary`）。
+2. Runtime 选 **Node**。
+3. Build Command：`npm install`
+4. Start Command：`npm run start`
+5. 在 Render 的 Environment 里配置：
+   - `LLM_PROVIDER`（`anthropic` / `openai` / `moonshot`）
+   - 对应的 API Key（如 `ANTHROPIC_API_KEY`）
+   - 可选模型变量（如 `ANTHROPIC_MODEL`）
+   - `PORT` 不填也可（Render 会自动注入）
+6. 部署成功后拿到后端地址，例如：`https://papier-api.onrender.com`
+
+### 2) 再部署 Vercel（前端）
+
+1. 在 Vercel 新建项目，连接同一个仓库，Root Directory 选 `sticker_diary`。
+2. Build Command：`npm run build`
+3. Output Directory：`dist`
+4. 在 Vercel 项目环境变量添加：
+   - `VITE_API_BASE_URL=https://你的-render-域名`
+5. 触发部署，拿到前端地址（例如 `https://papier.vercel.app`）。
+
+### 3) 发布后检查
+
+- 打开前端链接，确认页面可访问；
+- 在 AI 对话里问一个普通问题（例如“西雅图在哪里”）应能正常回答；
+- 再试一个待办句子，确认候选贴纸可生成。
+
+> 说明：当前数据仍是浏览器 `localStorage`，不同设备之间不会自动同步（符合 v1 设计）。
+
 ## 后续（v2）
 
 云端同步可考虑 Supabase；贴纸素材库与 AI 绘图在 spec 中已标为后续版本。
